@@ -16,11 +16,11 @@ st.header("1️⃣ Preprocessing", anchor="preprocessing")
 
 st.write("### Datenordner auswählen")
 
-data = st.text_input("Pfad zum Datenordner", value="/home/martin/ocr4all/data/Iffland_Elise_von_Valberg/processing")
+data = st.text_input("Pfad zum Datenordner", value="data/drama")
 
-title = st.text_input("Titel des Dramas", value="Marianne oder der Sieg der Tugend")
-subtitle = st.text_input("Untertitel des Dramas", value="ein rührendes Lustspiel in 3 Aufzügen")
-author = st.text_input("Autor des Dramas", value="Victoria Rupp")
+title = st.text_input("Titel des Dramas", value="Titel ...")
+subtitle = st.text_input("Untertitel des Dramas", value="Untertitel ...")
+author = st.text_input("Autor des Dramas", value="Autor")
 
 all_metadata = f"""
 @title {title}
@@ -103,10 +103,10 @@ if 'speaker_list_raw' in st.session_state:
 
 st.markdown("---")
 
-st.header("1️⃣.2️⃣ Übersehene Speaker finden")
+st.header("2️⃣ Übersehene Speaker finden")
 
 file_path = "output/1_drama_preprocessed.txt"
-output_path = "output/1_2_drama_processed.txt"
+output_path = "output/2_drama_speaker_fixed.txt"
 
 if 'speaker_line_selection' not in st.session_state:
     st.session_state.speaker_line_selection = {}
@@ -188,11 +188,11 @@ if 'found_lines' in st.session_state:
 
 
 st.markdown("---")
-st.header("1️⃣.3️⃣ Klammer-Zeilen extrahieren")
+st.header("3️⃣ Klammer-Zeilen extrahieren")
 
 
-file_path = "output/1_2_drama_processed.txt"
-output_path = "output/1_3_drama_processed_brackets_fixed.txt"
+file_path = "output/2_drama_speaker_fixed.txt"
+output_path = "output/3_drama_brackets_fixed.txt"
 
 if 'editable_bracket_contents' not in st.session_state:
     st.session_state.editable_bracket_contents = []
@@ -238,12 +238,12 @@ if st.session_state.get('editable_bracket_contents'):
         st.success(f"Alle Änderungen wurden übernommen und gespeichert unter: {output_path}")
 
 st.markdown("---")
-st.header("2️⃣ Interaktive Speaker-Normalisierung")
+st.header("4️⃣ Interaktive Speaker-Normalisierung")
 
 # Load text
 # Button zum Laden der Datei, um automatisches Laden zu verhindern
 if st.button("Textdatei laden"):
-    with open("output/1_3_drama_processed_brackets_fixed.txt", "r", encoding="utf-8") as f:
+    with open("output/3_drama_brackets_fixed.txt", "r", encoding="utf-8") as f:
         text = f.read()
     st.session_state.text_loaded = True
     st.session_state.text_content = text
@@ -299,18 +299,18 @@ if st.session_state.get('text_loaded', False):
             for variant in variants:
                 pattern = r"^@" + re.escape(variant) + r"$"
                 normalized_text = re.sub(pattern, group_name, normalized_text, flags=re.MULTILINE)
-        with open("output/2_normalized_speakers.txt", "w", encoding="utf-8") as f_out:
+        with open("output/4_normalized_speakers.txt", "w", encoding="utf-8") as f_out:
             f_out.write(normalized_text)
-        st.success("File normalized and saved to 'output/2_normalized_speakers.txt'")
+        st.success("File normalized and saved to 'output/4_normalized_speakers.txt'")
 
 st.markdown("---")
 
 # Neuer Abschnitt zum Bereinigen des Gesamttexts
-st.header("3️⃣ Gesamttext bereinigen")
+st.header("5️⃣ Gesamttext bereinigen")
 
 if st.button("Gesamttext bereinigen"):
-    file_path = "output/2_normalized_speakers.txt"
-    output_path = "output/3_drama_clean.txt"
+    file_path = "output/4_normalized_speakers.txt"
+    output_path = "output/5_drama_text_cleaned.txt"
 
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -439,12 +439,12 @@ if st.button("Gesamttext bereinigen"):
 st.markdown("---")
 
 # Abschnitt: EzDrama to DraCor-TEI
-st.header("4️⃣ EzDrama zu DraCor-TEI konvertieren")
+st.header("6️⃣ EzDrama zu DraCor-TEI konvertieren")
 
 # Konfiguration der Parser-Optionen direkt oben in der App
 bracketstages = st.checkbox("Klammern als Bühnenanweisungen behandeln (bracketstages)", value=True)
 is_prose = st.checkbox("Prosa-Modus aktivieren (is_prose)", value=True)
-dracor_id = st.text_input("Dracor ID", value="Z251577604")
+dracor_id = st.text_input("Dracor ID", value="ger000000")
 dracor_lang = st.text_input("Sprache des Dramas (dracor_lang)", value="de")
 
 if st.button("EzDrama to DraCor-TEI"):
@@ -455,5 +455,5 @@ if st.button("EzDrama to DraCor-TEI"):
             dracor_id=dracor_id,
             dracor_lang=dracor_lang
         )
-        parser.process_file("output/3_drama_clean.txt")
+        parser.process_file("output/5_drama_text_cleaned.txt")
         st.success(f"Konvertierung abgeschlossen: {parser.outputname}")
