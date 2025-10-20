@@ -457,3 +457,16 @@ if st.button("EzDrama to DraCor-TEI"):
         )
         parser.process_file("output/5_drama_text_cleaned.txt")
         st.success(f"Konvertierung abgeschlossen: {parser.outputname}")
+
+        if os.path.exists(parser.outputname):
+            with open(parser.outputname, "rb") as f:
+                xml_bytes = f.read()
+            st.download_button(
+                label="XML herunterladen",
+                data=xml_bytes,
+                file_name=os.path.basename(parser.outputname),
+                mime="application/xml",
+                key="dl_xml",
+            )
+        else:
+            st.error("Ausgabedatei nicht gefunden.")
