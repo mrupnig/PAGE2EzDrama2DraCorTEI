@@ -254,46 +254,46 @@ if st.session_state.get('text_loaded', False):
     speakers_raw = re.findall(r"^@(.*?)$", text, re.MULTILINE)
     unique_speakers = sorted(set(speakers_raw))
 
-    st.subheader("Detected Speakers")
-    st.write(f"Total speakers detected: {len(unique_speakers)}")
+    st.subheader("Gefundene Sprecher")
+    st.write(f"Anzahl gefundener Sprecher: {len(unique_speakers)}")
 
     if 'speaker_groups' not in st.session_state:
         st.session_state.speaker_groups = defaultdict(list)
     if 'remaining_speakers' not in st.session_state:
         st.session_state.remaining_speakers = unique_speakers.copy()
 
-    raw_group_name = st.text_input("Add a new normalized speaker (only name, e.g., Klingbeil)")
-    if st.button("Add Speaker Group"):
+    raw_group_name = st.text_input("Einen neuen Sprecher anlegen")
+    if st.button("neue Sprechergruppe anlegen"):
         if raw_group_name:
             formatted_group_name = f"@{raw_group_name.strip()}."
             if formatted_group_name not in st.session_state.speaker_groups:
                 # Neu angelegte Speaker an den Anfang der OrderedDict-ähnlichen Struktur setzen
                 st.session_state.speaker_groups = defaultdict(list, {formatted_group_name: []} | st.session_state.speaker_groups)
-                st.success(f"Added new group: {formatted_group_name}")
+                st.success(f"neue Gruppe hinzugefügt: {formatted_group_name}")
             else:
-                st.warning(f"Group {formatted_group_name} already exists.")
+                st.warning(f"Gruppe {formatted_group_name} existiert bereits.")
 
     left_col, right_col = st.columns(2)
 
     with left_col:
         if st.session_state.remaining_speakers:
-            st.subheader("Speakers Remaining for Assignment")
+            st.subheader("noch übrige Sprecher")
             st.write(st.session_state.remaining_speakers)
         else:
-            st.success("All speakers have been assigned to a group.")
+            st.success("Alle Sprecher wurden ihrer Gruppe hinzugefügt.")
 
     with right_col:
-        st.subheader("Assign Speakers to Normalized Groups")
+        st.subheader("Füge Sprecher den normalisierten Gruppen hinzu")
         for group_name in list(st.session_state.speaker_groups.keys()):
             st.write(f"### {group_name}")
-            selected = st.multiselect(f"Select speakers to add to {group_name}", st.session_state.remaining_speakers, key=f"select_{group_name}")
-            if st.button(f"Add to {group_name}", key=f"add_{group_name}"):
+            selected = st.multiselect(f"Wähle Sprecher, um sie {group_name} hinzuzufügen", st.session_state.remaining_speakers, key=f"select_{group_name}")
+            if st.button(f"Füge hin zu {group_name}", key=f"add_{group_name}"):
                 for sel in selected:
                     st.session_state.speaker_groups[group_name].append(sel)
                     st.session_state.remaining_speakers.remove(sel)
-                st.success(f"Added {len(selected)} speaker(s) to {group_name}")
+                st.success(f"{len(selected)} Sprecher zu {group_name} hinzugefügt")
 
-    if st.button("Normalize and Save File"):
+    if st.button("Normalisieren und Datei speichern"):
         normalized_text = text
         for group_name, variants in st.session_state.speaker_groups.items():
             for variant in variants:
@@ -301,7 +301,7 @@ if st.session_state.get('text_loaded', False):
                 normalized_text = re.sub(pattern, group_name, normalized_text, flags=re.MULTILINE)
         with open("output/4_normalized_speakers.txt", "w", encoding="utf-8") as f_out:
             f_out.write(normalized_text)
-        st.success("File normalized and saved to 'output/4_normalized_speakers.txt'")
+        st.success("Datei normalisiert und gespeichert nach 'output/4_normalized_speakers.txt'")
 
 st.markdown("---")
 
