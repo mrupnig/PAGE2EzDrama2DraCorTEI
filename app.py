@@ -537,6 +537,8 @@ st.markdown("---")
 # Neuer Abschnitt zum Bereinigen des Gesamttexts
 st.header("5️⃣ Gesamttext bereinigen")
 
+keep_linebreaks = st.checkbox("Zeilenumbrüche behalten", value=False)
+
 if st.button("Gesamttext bereinigen"):
     file_path = "output/4_normalized_speakers.txt"
     output_path = "output/5_drama_text_cleaned.txt"
@@ -544,126 +546,164 @@ if st.button("Gesamttext bereinigen"):
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    cleaned_lines = []
-    buffer = ""
-    verse_mode = False
-
-    def process_line(line):
-        line = line.rstrip()
-        if line.endswith("-") and not line.endswith(" -") and not line.endswith("--"):
-            return line[:-1], True
-        return line, False
-
-    def normalize_text(text):
+    def normalize_text(text: str) -> str:
         replacements = {
-            "ſ": "s",
-            "ʒ": "z",
-            "Ʒ": "Z",
-            "aͤ": "ä",
-            "oͤ": "ö",
-            "uͤ": "ü",
-            "Jch": "Ich",
-            "Jtzt": "Itzt",
-            "Jst": "Ist",
-            "Jn": "In",
-            "Jm": "Im",
-            "Jhm": "Ihm",
-            "Jhn": "Ihn",
-            "Jhr": "Ihr",
-            "Jr": "Ir"
+            "ſ": "s", "ʒ": "z", "Ʒ": "Z",
+            "aͤ": "ä", "oͤ": "ö", "uͤ": "ü",
+            "Jch": "Ich", "Jtzt": "Itzt", "Jst": "Ist",
+            "Jn": "In", "Jm": "Im", "Jhm": "Ihm",
+            "Jhn": "Ihn", "Jhr": "Ihr", "Jr": "Ir"
         }
         for old, new in replacements.items():
             text = text.replace(old, new)
         return text
 
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if not line:
-            i += 1
-            continue
+    # -------- Variante A: Zeilenumbrüche behalten --------
+    if keep_linebreaks:
+        cleaned_lines = []
+        i = 0
+        while i < len(lines):
+            raw = lines[i].rstrip("\n")
+            # Leerzeilen beibehalten
+            if raw.strip() == "":
+                cleaned_lines.append("")
+                i += 1
+                continue
 
-        if line.startswith("~"):
-            verse_mode = True
-            if buffer:
-                cleaned_lines.append(buffer.strip())
-                buffer = ""
-            cleaned_lines.append(normalize_text(line.strip()))
-            i += 1
-            continue
+            line = raw.strip()
 
-        if verse_mode:
-            if not line.startswith(("@", "#", "^", "$", "~", "(")):
+            # Versmodus-Marker (~): nur normalisieren und übernehmen
+            if line.startswith("~"):
+                cleaned_lines.append(normalize_text(line))
+                i += 1
+                continue
+
+            # Sprecherzeile (@): NICHT mit folgender Klammerzeile mergen
+            if line.startswith("@"):
+                cleaned_lines.append(line)  # unverändert, aber unten global normalisiert
+                i += 1
+                continue
+
+            # Regie-/Blockzeilen ($): jede Zeile separat übernehmen, kein Mergen
+            if line.startswith("$"):
+                cleaned_lines.append("$" + line[1:].strip())
+                i += 1
+                continue
+
+            # Überschriften/Marker: unverändert durchreichen
+            if line.startswith(("#", "^")):
+                cleaned_lines.append(line)
+                i += 1
+                continue
+
+            # Standardzeile: keine Silbentrennungs-Merges
+            cleaned_lines.append(line)
+            i += 1
+
+        # am Ende nur Zeichennormalisierung anwenden
+        cleaned_lines = [normalize_text(l) if l else "" for l in cleaned_lines]
+
+    # -------- Variante B: deine bisherige Logik (Merges) --------
+    else:
+        cleaned_lines = []
+        buffer = ""
+        verse_mode = False
+
+        def process_line(line):
+            line = line.rstrip()
+            if line.endswith("-") and not line.endswith(" -") and not line.endswith("--"):
+                return line[:-1], True
+            return line, False
+
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if not line:
+                i += 1
+                continue
+
+            if line.startswith("~"):
+                verse_mode = True
+                if buffer:
+                    cleaned_lines.append(buffer.strip())
+                    buffer = ""
                 cleaned_lines.append(normalize_text(line.strip()))
                 i += 1
                 continue
-            else:
-                verse_mode = False
 
-        if line.startswith("@"):
-            verse_mode = False
-            if buffer:
-                cleaned_lines.append(buffer.strip())
-                buffer = ""
-            speaker_line = line
-            i += 1
-            if i < len(lines):
-                next_line = lines[i].strip()
-                if next_line.startswith("(") and next_line.endswith(")"):
-                    speaker_line += f" {next_line}"
+            if verse_mode:
+                if not line.startswith(("@", "#", "^", "$", "~", "(")):
+                    cleaned_lines.append(normalize_text(line.strip()))
                     i += 1
-            cleaned_lines.append(speaker_line)
-            continue
-
-        if line.startswith("$"):
-            verse_mode = False
-            combined_line, is_hyphenated = process_line(line[1:].strip())
-            i += 1
-            while i < len(lines) and lines[i].strip().startswith("$"):
-                next_line_content = lines[i].strip()[1:].strip()
-                processed_next, next_is_hyphenated = process_line(next_line_content)
-                if is_hyphenated:
-                    combined_line += processed_next
+                    continue
                 else:
-                    combined_line += " " + processed_next
-                is_hyphenated = next_is_hyphenated
+                    verse_mode = False
+
+            if line.startswith("@"):
+                verse_mode = False
+                if buffer:
+                    cleaned_lines.append(buffer.strip())
+                    buffer = ""
+                speaker_line = line
                 i += 1
-            if buffer:
-                cleaned_lines.append(buffer.strip())
-                buffer = ""
-            cleaned_lines.append("$" + combined_line.strip())
-            continue
+                if i < len(lines):
+                    next_line = lines[i].strip()
+                    if next_line.startswith("(") and next_line.endswith(")"):
+                        speaker_line += f" {next_line}"
+                        i += 1
+                cleaned_lines.append(speaker_line)
+                continue
 
-        if line.startswith(("#", "^")):
-            verse_mode = False
-            if buffer:
-                cleaned_lines.append(buffer.strip())
-                buffer = ""
-            cleaned_lines.append(line)
+            if line.startswith("$"):
+                verse_mode = False
+                combined_line, is_hyphenated = process_line(line[1:].strip())
+                i += 1
+                while i < len(lines) and lines[i].strip().startswith("$"):
+                    next_line_content = lines[i].strip()[1:].strip()
+                    processed_next, next_is_hyphenated = process_line(next_line_content)
+                    if is_hyphenated:
+                        combined_line += processed_next
+                    else:
+                        combined_line += " " + processed_next
+                    is_hyphenated = next_is_hyphenated
+                    i += 1
+                if buffer:
+                    cleaned_lines.append(buffer.strip())
+                    buffer = ""
+                cleaned_lines.append("$" + combined_line.strip())
+                continue
+
+            if line.startswith(("#", "^")):
+                verse_mode = False
+                if buffer:
+                    cleaned_lines.append(buffer.strip())
+                    buffer = ""
+                cleaned_lines.append(line)
+                i += 1
+                continue
+
+            processed_line, is_hyphenated = process_line(line)
+            buffer += " " + processed_line
+
+            while is_hyphenated and i + 1 < len(lines):
+                i += 1
+                next_line = lines[i].strip()
+                processed_line, is_hyphenated = process_line(next_line)
+                buffer += processed_line
+
             i += 1
-            continue
 
-        processed_line, is_hyphenated = process_line(line)
-        buffer += " " + processed_line
+        if buffer:
+            cleaned_lines.append(buffer.strip())
 
-        while is_hyphenated and i + 1 < len(lines):
-            i += 1
-            next_line = lines[i].strip()
-            processed_line, is_hyphenated = process_line(next_line)
-            buffer += processed_line
-
-        i += 1
-
-    if buffer:
-        cleaned_lines.append(buffer.strip())
-
-    cleaned_lines = [normalize_text(line) for line in cleaned_lines]
+        cleaned_lines = [normalize_text(line) for line in cleaned_lines]
 
     with open(output_path, "w", encoding="utf-8") as f:
         for line in cleaned_lines:
             f.write(line + "\n")
 
     st.success(f"Bereinigter Text gespeichert unter: {output_path}")
+
 
 st.markdown("---")
 
