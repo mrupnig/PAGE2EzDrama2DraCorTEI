@@ -5,39 +5,80 @@ from modules.GetSpeakers import *
 from modules.PAGE2EzDrama import *
 from modules.DraCorParser import Parser
 import math
+import io, zipfile, uuid
+from pathlib import Path
 
+if "session_dir" not in st.session_state:
+    st.session_state.session_dir = Path("uploads") / str(uuid.uuid4())
+    st.session_state.session_dir.mkdir(parents=True, exist_ok=True)
+
+if "data_dir" not in st.session_state:
+    st.session_state.data_dir = None
+
+session_dir: Path = st.session_state.session_dir
 
 st.title("PAGE to EzDrama to DraCorTEI")
 st.text("""
-        Mit dieser Anwendung können Dramen von PAGE biszu DraCor TEI konvertiert werden.
+        Mit dieser Anwendung können Dramen von PAGE zu DraCor-TEI konvertiert werden.
 """)
 
 st.header("1️⃣ Preprocessing", anchor="preprocessing")
 
 st.write("### Datenordner auswählen")
 
-data = st.text_input("Pfad zum Datenordner", value="data/drama")
+#data = st.text_input("Pfad zum Datenordner", value="data/drama")
+mode = st.radio("Upload-Modus", ["ZIP-Ordner", "Einzelne XMLs"])
+
+if mode == "ZIP-Ordner":
+    z = st.file_uploader("ZIP mit deinem Ordner wählen", type=["zip"])
+    if z and st.button("Ordner importieren"):
+        with zipfile.ZipFile(io.BytesIO(z.read())) as zf:
+            for name in zf.namelist():
+                if name.lower().endswith(".xml") and not name.endswith("/"):
+                    target = session_dir / Path(name).name  # flach ablegen
+                    with zf.open(name) as src, open(target, "wb") as dst:
+                        dst.write(src.read())
+        xmls = list(session_dir.glob("*.xml"))
+        if xmls:
+            st.session_state.data_dir = str(session_dir)
+            st.success(f"{len(xmls)} XML-Datei(en) importiert.")
+        else:
+            st.error("Keine XML-Dateien im ZIP gefunden.")
+
+else:
+    files = st.file_uploader("XML-Dateien wählen", type=["xml"], accept_multiple_files=True)
+    if files and st.button("Dateien importieren"):
+        for uf in files:
+            (session_dir / uf.name).write_bytes(uf.read())
+        st.session_state.data_dir = str(session_dir)
+        st.success(f"{len(list(session_dir.glob('*.xml')))} XML-Datei(en) importiert.")
+
+# Anzeige des gültigen Datenpfads
+if st.session_state.data_dir:
+    st.info(f"Datenpfad: {st.session_state.data_dir}")
+else:
+    st.warning("Noch kein Datenpfad gesetzt. Bitte Dateien importieren.")
 
 title = st.text_input("Titel des Dramas", value="Titel ...")
 subtitle = st.text_input("Untertitel des Dramas", value="Untertitel ...")
 author = st.text_input("Autor des Dramas", value="Autor")
 
-all_metadata = f"""
-@title {title}
-@subtitle {subtitle}
-@author {author}
-"""
+all_metadata = f"@title {title}\n@subtitle {subtitle}\n@author {author}\n"
 
-if st.button("Preprocessing jetzt starten"):
-    with st.spinner("Extrahiere und bereite Daten vor..."):
-        dramatis_personae = extract_toc_entries(data)
-        speaker_list_raw, speaker_examples = extract_sentences_with_dot_and_limit(data)
-        figuren = extract_figuren(dramatis_personae)
-        st.session_state.dramatis_personae = dramatis_personae
-        st.session_state.speaker_list_raw = speaker_list_raw
-        st.session_state.speaker_examples = speaker_examples
-        st.session_state.figuren = figuren
-    st.success("Preprocessing abgeschlossen.")
+if st.button("Preprocessing starten"):
+    if not st.session_state.data_dir:
+        st.error("Kein Datenpfad gesetzt. Bitte zuerst XML-Dateien importieren.")
+    else:
+        with st.spinner("Extrahiere und bereite Daten vor..."):
+            data_dir = st.session_state.data_dir  # persistenter Pfad
+            dramatis_personae = extract_toc_entries(data_dir)
+            speaker_list_raw, speaker_examples = extract_sentences_with_dot_and_limit(data_dir)
+            figuren = extract_figuren(dramatis_personae)
+            st.session_state.dramatis_personae = dramatis_personae
+            st.session_state.speaker_list_raw = speaker_list_raw
+            st.session_state.speaker_examples = speaker_examples
+            st.session_state.figuren = figuren
+        st.success("Preprocessing abgeschlossen.")
 
 if 'speaker_list_raw' in st.session_state:
     st.write(f"**Extrahierte Figuren:** {st.session_state.dramatis_personae}")
