@@ -132,7 +132,7 @@ if 'speaker_list_raw' in st.session_state:
         valid_speakers = [speaker for speaker, keep in st.session_state.speaker_selection.items() if keep]
         if valid_speakers:
             output_path = page2ezdrama(
-                data_dir=data_dir,
+                data_dir=st.session_state.data_dir,
                 output_dir="output",
                 output_filename="1_drama_preprocessed.txt",
                 all_metadata=all_metadata,
