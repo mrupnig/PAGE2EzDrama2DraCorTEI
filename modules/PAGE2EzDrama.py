@@ -26,7 +26,9 @@ def extract_lines(filepath):
         region_type = region.attrib.get("type", "")
         prefix = type_prefix.get(region_type, "")
 
-        for line in region.findall('pc:TextLine', ns):
+        region_lines = region.findall('pc:TextLine', ns)
+        n = len(region_lines)
+        for i, line in enumerate(region_lines):
             coords_el = line.find('pc:Coords', ns)
             if coords_el is None:
                 continue
@@ -39,19 +41,36 @@ def extract_lines(filepath):
 
             text_equivs = line.findall('pc:TextEquiv', ns)
             text_equiv = None
-
             for te in text_equivs:
                 if te.attrib.get('index') == '0':
                     text_equiv = te
                     break
             if text_equiv is None and text_equivs:
-                text_equiv = text_equivs[-1]  # fallback
+                text_equiv = text_equivs[-1]
 
-            if text_equiv is not None:
-                text = text_equiv.find('pc:Unicode', ns)
-                if text is not None and text.text:
-                    formatted_text = f"{prefix}{text.text}" if prefix else text.text
-                    lines_data.append((y_center, x_min, formatted_text))
+            if text_equiv is None:
+                continue
+            uni = text_equiv.find('pc:Unicode', ns)
+            if uni is None or not (uni.text and uni.text.strip()):
+                continue
+            base = uni.text
+
+            # Formatierungslogik für Regieanweisungen
+            if region_type == "caption":
+                # Klammern über die gesamte Caption-Region spannen
+                if n == 1:
+                    formatted_text = f"({base})"
+                else:
+                    if i == 0:
+                        formatted_text = f"({base}"
+                    elif i == n - 1:
+                        formatted_text = f"{base})"
+                    else:
+                        formatted_text = base
+            else:
+                formatted_text = f"{prefix}{base}" if prefix else base
+
+            lines_data.append((y_center, x_min, formatted_text))
 
     return lines_data
 
