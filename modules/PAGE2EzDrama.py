@@ -21,6 +21,7 @@ def extract_lines(filepath):
     tree = ET.parse(filepath)
     root = tree.getroot()
     lines_data = []
+    first_toc_done = False
 
     for region in root.findall('.//pc:TextRegion', ns):
         region_type = region.attrib.get("type", "")
@@ -28,6 +29,7 @@ def extract_lines(filepath):
 
         region_lines = region.findall('pc:TextLine', ns)
         n = len(region_lines)
+
         for i, line in enumerate(region_lines):
             coords_el = line.find('pc:Coords', ns)
             if coords_el is None:
@@ -55,9 +57,8 @@ def extract_lines(filepath):
                 continue
             base = uni.text
 
-            # Formatierungslogik für Regieanweisungen
+            # --- Speziallogik ---
             if region_type == "caption":
-                # Klammern über die gesamte Caption-Region spannen
                 if n == 1:
                     formatted_text = f"({base})"
                 else:
@@ -67,12 +68,19 @@ def extract_lines(filepath):
                         formatted_text = f"{base})"
                     else:
                         formatted_text = base
+            elif region_type == "TOC-entry":
+                if not first_toc_done:
+                    formatted_text = f"~{prefix}{base}" if prefix else f"~{base}"
+                    first_toc_done = True
+                else:
+                    formatted_text = f"{prefix}{base}" if prefix else base
             else:
                 formatted_text = f"{prefix}{base}" if prefix else base
 
             lines_data.append((y_center, x_min, formatted_text))
 
     return lines_data
+
 
 def process_file(filepath, speaker_list):
     lines_data = extract_lines(filepath)
