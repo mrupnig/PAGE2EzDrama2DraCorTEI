@@ -139,8 +139,67 @@ if 'speaker_list_raw' in st.session_state:
                 speaker_list=valid_speakers
             )
             st.success(f"Gesamtausgabe gespeichert unter: {output_path}")
+            st.session_state.current_edit_path = output_path
+            st.rerun() 
         else:
             st.warning("Bitte mindestens einen Sprecher auswählen, bevor die Datei erstellt wird.")
+
+st.divider()
+st.subheader("Datei direkt in der App bearbeiten")
+
+def _load_text(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+edit_path = st.session_state.get("current_edit_path")
+
+if edit_path and os.path.exists(edit_path):
+    # Editor-Buffer initialisieren, falls Pfad neu ist
+    if st.session_state.get("_editor_path") != edit_path or "editor_text" not in st.session_state:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.session_state._editor_path = edit_path
+
+    with st.expander(f"Datei bearbeiten: {edit_path}", expanded=True):
+        with st.form("edit_file_form", clear_on_submit=False):
+            editor_value = st.text_area(
+                "Inhalt bearbeiten",
+                value=st.session_state.editor_text,
+                height=420,
+                key="editor_textarea",
+            )
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                save_clicked = st.form_submit_button("Änderungen speichern")
+            with c2:
+                reload_clicked = st.form_submit_button("Original neu laden")
+            with c3:
+                download_clicked = st.form_submit_button("Als Datei herunterladen")
+
+    if save_clicked:
+        try:
+            with open(edit_path, "w", encoding="utf-8") as f:
+                f.write(editor_value)
+            st.session_state.editor_text = editor_value
+            st.success("Gespeichert.")
+        except Exception as e:
+            st.error(f"Fehler beim Speichern: {e}")
+
+    if reload_clicked:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.rerun()
+
+    if download_clicked:
+        st.download_button(
+            label="Download starten",
+            data=editor_value.encode("utf-8"),
+            file_name=Path(edit_path).name,
+            mime="text/plain",
+        )
+else:
+    st.info("Noch keine Datei zum Bearbeiten. Führe zuerst den Speicherschritt aus.")
 
 st.markdown("---")
 
@@ -226,6 +285,69 @@ if 'found_lines' in st.session_state:
                 f.write(pline + "\n")
 
         st.success(f"Ausgewählte Zeilen wurden umgeschrieben und gespeichert unter: {output_path}")
+        st.session_state.current_edit_path = output_path
+        st.rerun()
+
+
+st.divider()
+st.subheader("Datei direkt in der App bearbeiten")
+
+def _load_text(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+edit_path = st.session_state.get("current_edit_path")
+
+if edit_path and os.path.exists(edit_path):
+    form_key = f"edit_file_form__{Path(edit_path).name}"
+    ta_key   = f"editor_textarea__{Path(edit_path).name}"
+
+    # Buffer initialisieren, wenn neue Datei
+    if st.session_state.get("_editor_path") != edit_path or "editor_text" not in st.session_state:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.session_state._editor_path = edit_path
+
+    with st.expander(f"Datei bearbeiten: {edit_path}", expanded=True):
+        with st.form(form_key, clear_on_submit=False):
+            editor_value = st.text_area(
+                "Inhalt bearbeiten",
+                value=st.session_state.editor_text,
+                height=420,
+                key=ta_key,  # eindeutiger Key pro Datei
+            )
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                save_clicked = st.form_submit_button("Änderungen speichern")
+            with c2:
+                reload_clicked = st.form_submit_button("Original neu laden")
+            with c3:
+                download_clicked = st.form_submit_button("Als Datei herunterladen")
+
+    if save_clicked:
+        try:
+            with open(edit_path, "w", encoding="utf-8") as f:
+                f.write(editor_value)
+            st.session_state.editor_text = editor_value
+            st.success("Gespeichert.")
+        except Exception as e:
+            st.error(f"Fehler beim Speichern: {e}")
+
+    if reload_clicked:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.rerun()
+
+    if download_clicked:
+        st.download_button(
+            label="Download starten",
+            data=editor_value.encode("utf-8"),
+            file_name=Path(edit_path).name,
+            mime="text/plain",
+        )
+else:
+    st.info("Noch keine Datei zum Bearbeiten. Führe zuerst den Speicherschritt aus.")
 
 
 st.markdown("---")
@@ -281,10 +403,11 @@ if st.session_state.get('editable_bracket_contents'):
 st.markdown("---")
 st.header("4️⃣ Interaktive Speaker-Normalisierung")
 
-# Load text
-# Button zum Laden der Datei, um automatisches Laden zu verhindern
+file_path = "output/3_drama_brackets_fixed.txt"
+output_path = "output/4_normalized_speakers.txt"
+
 if st.button("Textdatei laden"):
-    with open("output/3_drama_brackets_fixed.txt", "r", encoding="utf-8") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         text = f.read()
     st.session_state.text_loaded = True
     st.session_state.text_content = text
@@ -340,9 +463,74 @@ if st.session_state.get('text_loaded', False):
             for variant in variants:
                 pattern = r"^@" + re.escape(variant) + r"$"
                 normalized_text = re.sub(pattern, group_name, normalized_text, flags=re.MULTILINE)
-        with open("output/4_normalized_speakers.txt", "w", encoding="utf-8") as f_out:
+        with open(output_path, "w", encoding="utf-8") as f_out:
             f_out.write(normalized_text)
-        st.success("Datei normalisiert und gespeichert nach 'output/4_normalized_speakers.txt'")
+        st.success(f"Datei normalisiert und gespeichert nach {output_path}")
+        st.session_state.current_edit_path = output_path
+        st.session_state.editor_section = "sec4"  # Abschnitt markieren
+        st.rerun()
+
+SECTION_ID = "sec4"  # eindeutiger Präfix für Abschnitt 4
+
+st.divider()
+st.subheader("Datei direkt in der App bearbeiten")
+
+def _load_text(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+edit_path = st.session_state.get("current_edit_path")
+
+# Editor nur rendern, wenn dieser Abschnitt aktiv ist
+if st.session_state.get("editor_section") == SECTION_ID and edit_path and os.path.exists(edit_path):
+    form_key = f"{SECTION_ID}__edit_file_form__{Path(edit_path).name}"
+    ta_key   = f"{SECTION_ID}__editor_textarea__{Path(edit_path).name}"
+
+    if st.session_state.get("_editor_path") != edit_path or "editor_text" not in st.session_state:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.session_state._editor_path = edit_path
+
+    with st.expander(f"Datei bearbeiten: {edit_path}", expanded=True):
+        with st.form(form_key, clear_on_submit=False):
+            editor_value = st.text_area(
+                "Inhalt bearbeiten",
+                value=st.session_state.editor_text,
+                height=420,
+                key=ta_key,
+            )
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                save_clicked = st.form_submit_button("Änderungen speichern")
+            with c2:
+                reload_clicked = st.form_submit_button("Original neu laden")
+            with c3:
+                download_clicked = st.form_submit_button("Als Datei herunterladen")
+
+    if save_clicked:
+        try:
+            with open(edit_path, "w", encoding="utf-8") as f:
+                f.write(editor_value)
+            st.session_state.editor_text = editor_value
+            st.success("Gespeichert.")
+        except Exception as e:
+            st.error(f"Fehler beim Speichern: {e}")
+
+    if reload_clicked:
+        st.session_state.editor_text = _load_text(edit_path)
+        st.rerun()
+
+    if download_clicked:
+        st.download_button(
+            label="Download starten",
+            data=editor_value.encode("utf-8"),
+            file_name=Path(edit_path).name,
+            mime="text/plain",
+        )
+else:
+    st.info("Noch keine Datei zum Bearbeiten in diesem Abschnitt.")
 
 st.markdown("---")
 
