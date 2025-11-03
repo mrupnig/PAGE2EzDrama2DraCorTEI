@@ -15,6 +15,7 @@ It provides a graphical workflow for converting OCR-derived PAGE-XML files into 
 ## Features
 
 - Import **PAGE-XML** files (locally or via upload)
+    - For detailed information on the PAGE-XML structure and region conventions, see the [Processing Guidelines](docs/guidelines.md).
 - Extract and preprocess `TextLine` content
 - Detect and manually correct speaker lines
 - Normalize speaker variants and faulty OCR data 
