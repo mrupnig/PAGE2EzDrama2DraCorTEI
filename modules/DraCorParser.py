@@ -189,8 +189,13 @@ class Parser():
 
 
     def process_file(self, path_to_file: str) -> None:
-        with open(path_to_file) as openfile:
-            file_lines = openfile.readlines()
+        try:
+            with open(path_to_file, encoding='utf-8') as openfile:
+                file_lines = openfile.readlines()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"EzDrama-Datei nicht gefunden: '{path_to_file}'")
+        except OSError as e:
+            raise OSError(f"Fehler beim Lesen von '{path_to_file}': {e}") from e
         self.parse_lines_to_xml(file_lines)
         self.output_to_file(path_to_file.replace('.txt', '.xml'))
 
@@ -533,9 +538,12 @@ class Parser():
 
 
     def output_to_file(self, newfilepath: str) -> None:
-        with open(newfilepath, 'w') as outfile:
-            outfile.write(self.tree_to_write)
-            self.outputname: str = newfilepath
+        self.outputname: str = newfilepath
+        try:
+            with open(newfilepath, 'w', encoding='utf-8') as outfile:
+                outfile.write(self.tree_to_write)
+        except OSError as e:
+            raise OSError(f"Fehler beim Schreiben nach '{newfilepath}': {e}") from e
 
 
 if __name__ == "__main__":

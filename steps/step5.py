@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 
 FILE_IN  = "output/4_normalized_speakers.txt"
@@ -11,6 +13,9 @@ def render() -> None:
     keep_linebreaks = st.checkbox("Zeilenumbrüche behalten", value=False)
 
     if st.button("Gesamttext bereinigen"):
+        if not os.path.exists(FILE_IN):
+            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 4 ausführen.")
+            return
         with open(FILE_IN, "r", encoding="utf-8") as f:
             lines = f.readlines()
 

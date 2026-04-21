@@ -1,4 +1,5 @@
 import os
+import warnings
 import xml.etree.ElementTree as ET
 import re
 import difflib
@@ -27,7 +28,10 @@ except ImportError:
 
 
 def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
-    tree = ET.parse(filepath)
+    try:
+        tree = ET.parse(filepath)
+    except ET.ParseError as e:
+        raise ValueError(f"Ungültige XML-Datei '{os.path.basename(filepath)}': {e}") from e
     root = tree.getroot()
     lines_data: list[tuple[float, int, str]] = []
 
@@ -41,8 +45,13 @@ def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
             coords_el = line.find('pc:Coords', ns)
             if coords_el is None:
                 continue
-            points = coords_el.attrib['points']
-            coords = [tuple(map(int, pt.split(','))) for pt in points.strip().split()]
+            points_str = coords_el.attrib.get('points', '')
+            if not points_str.strip():
+                continue
+            try:
+                coords = [tuple(map(int, pt.split(','))) for pt in points_str.strip().split()]
+            except ValueError:
+                continue
             xs = [x for x, y in coords]
             ys = [y for x, y in coords]
             x_min = min(xs)
@@ -73,7 +82,11 @@ def extract_sentences_with_dot_and_limit(directory: str) -> tuple[set[str], dict
     for filename in os.listdir(directory):
         if filename.endswith(".xml"):
             filepath = os.path.join(directory, filename)
-            lines = extract_lines(filepath)
+            try:
+                lines = extract_lines(filepath)
+            except (ValueError, OSError) as e:
+                warnings.warn(str(e))
+                continue
 
             for _, _, text in lines:
                 clean_text = text.lstrip("#@$^").strip()
@@ -236,7 +249,11 @@ def extract_toc_entries(folder_path: str) -> str:
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.xml'):
             filepath = os.path.join(folder_path, filename)
-            tree = ET.parse(filepath)
+            try:
+                tree = ET.parse(filepath)
+            except (ET.ParseError, OSError) as e:
+                warnings.warn(f"Datei übersprungen '{filename}': {e}")
+                continue
             root = tree.getroot()
 
             for region in root.findall('.//pc:TextRegion[@type="TOC-entry"]', ns):

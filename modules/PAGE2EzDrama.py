@@ -18,7 +18,10 @@ except ImportError:
 
 
 def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
-    tree = ET.parse(filepath)
+    try:
+        tree = ET.parse(filepath)
+    except ET.ParseError as e:
+        raise ValueError(f"Ungültige XML-Datei '{os.path.basename(filepath)}': {e}") from e
     root = tree.getroot()
     lines_data: list[tuple[float, int, str]] = []
     first_toc_done = False
@@ -34,8 +37,13 @@ def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
             coords_el = line.find('pc:Coords', ns)
             if coords_el is None:
                 continue
-            points = coords_el.attrib['points']
-            coords = [tuple(map(int, pt.split(','))) for pt in points.strip().split()]
+            points_str = coords_el.attrib.get('points', '')
+            if not points_str.strip():
+                continue
+            try:
+                coords = [tuple(map(int, pt.split(','))) for pt in points_str.strip().split()]
+            except ValueError:
+                continue
             xs = [x for x, y in coords]
             ys = [y for x, y in coords]
             x_min = min(xs)
@@ -126,25 +134,38 @@ def page2ezdrama(
     output_filename: str,
     all_metadata: str,
     speaker_list: list[str],
-) -> str:
-    """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert in output_dir/output_filename."""
+) -> tuple[str, list[str]]:
+    """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert in output_dir/output_filename.
+
+    Gibt (output_pfad, fehlerliste) zurück. Fehlerliste enthält Warnungen für übersprungene Dateien.
+    Wirft RuntimeError wenn keine einzige Datei verarbeitet werden konnte.
+    """
     os.makedirs(output_dir, exist_ok=True)
     gesamttext_path = os.path.join(output_dir, output_filename)
 
     gesamt_output: list[str] = []
+    file_errors: list[str] = []
 
     for filename in sorted(os.listdir(data_dir)):
         if filename.endswith(".xml"):
             filepath = os.path.join(data_dir, filename)
-            gesamt_output.extend(process_file(filepath, speaker_list))
+            try:
+                gesamt_output.extend(process_file(filepath, speaker_list))
+            except (ValueError, OSError) as e:
+                file_errors.append(f"{filename}: {e}")
+
+    if not gesamt_output:
+        detail = "\n".join(file_errors) if file_errors else "Keine XML-Dateien gefunden."
+        raise RuntimeError(
+            f"Keine Zeilen extrahiert. Prüfe ob die Dateien gültiges PAGE-XML enthalten.\n{detail}"
+        )
 
     with open(gesamttext_path, "w", encoding="utf-8") as f:
         f.write(f"{all_metadata.strip()}\n\n")
         for line in gesamt_output:
             f.write(line + "\n")
 
-    print(f"Fertig. Gesamtausgabe gespeichert in: {gesamttext_path}")
-    return gesamttext_path
+    return gesamttext_path, file_errors
 
 
 # Optional zum Testen direkt:

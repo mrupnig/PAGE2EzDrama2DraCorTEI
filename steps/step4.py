@@ -1,3 +1,4 @@
+import os
 import re
 from collections import defaultdict
 
@@ -15,6 +16,9 @@ def render() -> None:
     st.header("4️⃣ Interaktive Speaker-Normalisierung")
 
     if st.button("Textdatei laden"):
+        if not os.path.exists(FILE_IN):
+            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 3 ausführen.")
+            return
         with open(FILE_IN, "r", encoding="utf-8") as f:
             text = f.read()
         st.session_state.text_loaded  = True

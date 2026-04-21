@@ -1,3 +1,4 @@
+import os
 import re
 
 import streamlit as st
@@ -17,6 +18,9 @@ def render() -> None:
         st.session_state.speaker_line_selection = {}
 
     if st.button("Übersehene Speaker suchen"):
+        if not os.path.exists(FILE_IN):
+            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 1 ausführen.")
+            return
         with open(FILE_IN, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
@@ -55,6 +59,9 @@ def render() -> None:
             submitted = st.form_submit_button("Ausgewählte Zeilen umschreiben und speichern")
 
         if submitted:
+            if not os.path.exists(FILE_IN):
+                st.error(f"Eingabedatei nicht gefunden: {FILE_IN}")
+                return
             with open(FILE_IN, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 

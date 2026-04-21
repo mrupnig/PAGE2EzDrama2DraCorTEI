@@ -62,15 +62,18 @@ def render() -> None:
             st.error("Kein Datenpfad gesetzt. Bitte zuerst XML-Dateien importieren.")
         else:
             with st.spinner("Extrahiere und bereite Daten vor..."):
-                data_dir = st.session_state.data_dir
-                dramatis_personae = extract_toc_entries(data_dir)
-                speaker_list_raw, speaker_examples = extract_sentences_with_dot_and_limit(data_dir)
-                figuren = extract_figuren(dramatis_personae)
-                st.session_state.dramatis_personae   = dramatis_personae
-                st.session_state.speaker_list_raw    = speaker_list_raw
-                st.session_state.speaker_examples    = speaker_examples
-                st.session_state.figuren             = figuren
-            st.success("Preprocessing abgeschlossen.")
+                try:
+                    data_dir = st.session_state.data_dir
+                    dramatis_personae = extract_toc_entries(data_dir)
+                    speaker_list_raw, speaker_examples = extract_sentences_with_dot_and_limit(data_dir)
+                    figuren = extract_figuren(dramatis_personae)
+                    st.session_state.dramatis_personae   = dramatis_personae
+                    st.session_state.speaker_list_raw    = speaker_list_raw
+                    st.session_state.speaker_examples    = speaker_examples
+                    st.session_state.figuren             = figuren
+                    st.success("Preprocessing abgeschlossen.")
+                except Exception as e:
+                    st.error(f"Fehler beim Preprocessing: {e}")
 
     if "speaker_list_raw" in st.session_state:
         st.write(f"**Extrahierte Figuren:** {st.session_state.dramatis_personae}")
@@ -122,17 +125,22 @@ def render() -> None:
         if submitted:
             valid_speakers = [s for s, keep in st.session_state.speaker_selection.items() if keep]
             if valid_speakers:
-                output_path = page2ezdrama(
-                    data_dir=st.session_state.data_dir,
-                    output_dir="output",
-                    output_filename="1_drama_preprocessed.txt",
-                    all_metadata=all_metadata,
-                    speaker_list=valid_speakers,
-                )
-                st.success(f"Gesamtausgabe gespeichert unter: {output_path}")
-                st.session_state.current_edit_path = output_path
-                st.session_state.editor_section    = SECTION_ID
-                st.rerun()
+                try:
+                    output_path, file_errors = page2ezdrama(
+                        data_dir=st.session_state.data_dir,
+                        output_dir="output",
+                        output_filename="1_drama_preprocessed.txt",
+                        all_metadata=all_metadata,
+                        speaker_list=valid_speakers,
+                    )
+                    for err in file_errors:
+                        st.warning(f"Übersprungene Datei: {err}")
+                    st.success(f"Gesamtausgabe gespeichert unter: {output_path}")
+                    st.session_state.current_edit_path = output_path
+                    st.session_state.editor_section    = SECTION_ID
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Fehler bei der Vorverarbeitung: {e}")
             else:
                 st.warning("Bitte mindestens einen Sprecher auswählen, bevor die Datei erstellt wird.")
 
