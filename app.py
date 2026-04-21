@@ -1,6 +1,7 @@
 import streamlit as st
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from modules.GetSpeakers import *
 from modules.PAGE2EzDrama import *
 from modules.DraCorParser import Parser
@@ -385,12 +386,12 @@ if st.session_state.get('editable_bracket_contents'):
             text = f.read()
 
         # Alle alten Klammerinhalte durch die neuen ersetzen
-        def replacement_generator():
+        def replacement_generator() -> Iterator[str]:
             for new_content in updated_contents:
                 yield new_content
         replacer = replacement_generator()
 
-        def replace_match(match):
+        def replace_match(match: re.Match[str]) -> str:
             return next(replacer)
 
         new_text = re.sub(r"(?s)(\(.*?\))", replace_match, text, count=len(updated_contents))
@@ -609,7 +610,7 @@ if st.button("Gesamttext bereinigen"):
         buffer = ""
         verse_mode = False
 
-        def process_line(line):
+        def process_line(line: str) -> tuple[str, bool]:
             line = line.rstrip()
             if line.endswith("-") and not line.endswith(" -") and not line.endswith("--"):
                 return line[:-1], True

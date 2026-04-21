@@ -16,10 +16,11 @@ except ImportError:
         LINE_GROUP_THRESHOLD_FACTOR,
     )
 
-def extract_lines(filepath):
+
+def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
     tree = ET.parse(filepath)
     root = tree.getroot()
-    lines_data = []
+    lines_data: list[tuple[float, int, str]] = []
     first_toc_done = False
 
     for region in root.findall('.//pc:TextRegion', ns):
@@ -81,7 +82,7 @@ def extract_lines(filepath):
     return lines_data
 
 
-def process_file(filepath, speaker_list):
+def process_file(filepath: str, speaker_list: list[str]) -> list[str]:
     lines_data = extract_lines(filepath)
 
     ys_sorted = sorted(set(y for y, x, t in lines_data))
@@ -89,8 +90,8 @@ def process_file(filepath, speaker_list):
     avg_gap = statistics.median(line_gaps) if line_gaps else 0
     threshold = avg_gap * LINE_GROUP_THRESHOLD_FACTOR
 
-    line_groups = defaultdict(list)
-    group_keys = []
+    line_groups: dict[float, list[tuple[int, str]]] = defaultdict(list)
+    group_keys: list[float] = []
 
     lines_data.sort(key=lambda tup: (round(tup[0] / 5) * 5, tup[1]))
 
@@ -104,7 +105,7 @@ def process_file(filepath, speaker_list):
             line_groups[y].append((x, text))
             group_keys.append(y)
 
-    output_lines = []
+    output_lines: list[str] = []
     for gy in sorted(line_groups):
         paragraph_lines = [text for _, text in sorted(line_groups[gy])]
 
@@ -118,22 +119,19 @@ def process_file(filepath, speaker_list):
 
     return output_lines
 
-def page2ezdrama(data_dir, output_dir, output_filename, all_metadata, speaker_list):
-    """
-    Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe.
-    Speichert in output_dir/output_filename.
-    
-    Parameter:
-        data_dir (str): Ordner mit PAGE XML
-        output_dir (str): Zielordner
-        output_filename (str): Ausgabedateiname
-        all_metadata (str): Metadatenblock als String
-        speaker_list (List[str]): Liste von Sprechern
-    """
+
+def page2ezdrama(
+    data_dir: str,
+    output_dir: str,
+    output_filename: str,
+    all_metadata: str,
+    speaker_list: list[str],
+) -> str:
+    """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert in output_dir/output_filename."""
     os.makedirs(output_dir, exist_ok=True)
     gesamttext_path = os.path.join(output_dir, output_filename)
 
-    gesamt_output = []
+    gesamt_output: list[str] = []
 
     for filename in sorted(os.listdir(data_dir)):
         if filename.endswith(".xml"):
@@ -147,6 +145,7 @@ def page2ezdrama(data_dir, output_dir, output_filename, all_metadata, speaker_li
 
     print(f"Fertig. Gesamtausgabe gespeichert in: {gesamttext_path}")
     return gesamttext_path
+
 
 # Optional zum Testen direkt:
 if __name__ == "__main__":

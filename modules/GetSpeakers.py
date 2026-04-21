@@ -25,10 +25,11 @@ except ImportError:
         SIMILARITY_THRESHOLD_LOW,
     )
 
-def extract_lines(filepath):
+
+def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
     tree = ET.parse(filepath)
     root = tree.getroot()
-    lines_data = []
+    lines_data: list[tuple[float, int, str]] = []
 
     for region in root.findall('.//pc:TextRegion', ns):
         region_type = region.attrib.get("type", "")
@@ -64,9 +65,10 @@ def extract_lines(filepath):
 
     return lines_data
 
-def extract_sentences_with_dot_and_limit(directory):
-    extracted_sentences = set()
-    speaker_examples = {}
+
+def extract_sentences_with_dot_and_limit(directory: str) -> tuple[set[str], dict[str, str]]:
+    extracted_sentences: set[str] = set()
+    speaker_examples: dict[str, str] = {}
 
     for filename in os.listdir(directory):
         if filename.endswith(".xml"):
@@ -78,7 +80,6 @@ def extract_sentences_with_dot_and_limit(directory):
                 if not clean_text or not (clean_text[0].isupper() or re.match(r'^[vV](\.|\s|,|;)\s*', clean_text)):
                     continue
 
-                # Indizes aller Punkte in den ersten 13 Zeichen sammeln
                 dot_indices = [m.start() for m in re.finditer(r'\.', clean_text) if m.start() <= SPEAKER_DOT_SEARCH_LIMIT]
 
                 if dot_indices:
@@ -87,7 +88,6 @@ def extract_sentences_with_dot_and_limit(directory):
                         sentence = clean_text[:end_pos + 1].strip()
                         extracted_sentences.add(sentence)
 
-                        # Speichere den *gesamten* clean_text als Beispiel
                         cleaned_sentence = re.sub(r'[^\w\s]', '', sentence).strip().lower()
                         if cleaned_sentence not in speaker_examples:
                             speaker_examples[cleaned_sentence] = clean_text
@@ -95,15 +95,12 @@ def extract_sentences_with_dot_and_limit(directory):
     return extracted_sentences, speaker_examples
 
 
-
-
-
-def extract_figuren(dramatis_personae: str):
+def extract_figuren(dramatis_personae: str) -> set[str]:
     """
     Extrahiert Figuren aus einer dramatis personae Liste als Menge bereinigter Namen,
-    wobei maximal die ersten 3 Wörter pro Zeile berücksichtigt werden.
+    wobei maximal die ersten FIGURE_MAX_WORDS Wörter pro Zeile berücksichtigt werden.
     """
-    figuren = set()
+    figuren: set[str] = set()
 
     for line in dramatis_personae.splitlines():
         line = line.strip()
@@ -111,7 +108,7 @@ def extract_figuren(dramatis_personae: str):
             continue
 
         # Besitzformen entfernen
-        line = re.sub(r"['‘’`´]s\b", "", line)
+        line = re.sub(r"['''`´]s\b", "", line)
 
         words = line.split()
         first_words = " ".join(words[:FIGURE_MAX_WORDS])
@@ -135,12 +132,13 @@ def extract_figuren(dramatis_personae: str):
 
     return figuren
 
-def compute_similarity(word, figuren):
+
+def compute_similarity(word: str, figuren: set[str]) -> tuple[str | None, float]:
     """
     Berechnet die ähnlichste Figur zu 'word' aus der Menge 'figuren' und gibt (match, score) zurück.
     """
-    best_match = None
-    best_score = 0.0
+    best_match: str | None = None
+    best_score: float = 0.0
     word_clean = re.sub(r'[^\w\s]', '', word).strip().lower()
     tokens = word_clean.split()
 
@@ -158,12 +156,17 @@ def compute_similarity(word, figuren):
     return best_match, best_score
 
 
-def filter_valid_speakers(speaker_list, figuren, speaker_examples=None, interactive=True):
+def filter_valid_speakers(
+    speaker_list: list[str],
+    figuren: set[str],
+    speaker_examples: dict[str, str] | None = None,
+    interactive: bool = True,
+) -> list[str]:
     """
     Filtert valide Sprecher aus speaker_list basierend auf figuren.
     Zeigt bei interactive=True eine Beispielzeile VOR der Entscheidung an.
     """
-    valid_speakers = []
+    valid_speakers: list[str] = []
 
     if interactive:
         print("Drücke 'j' für JA (Speaker behalten), 'n' für NEIN (entfernen):\n")
@@ -219,7 +222,8 @@ def filter_valid_speakers(speaker_list, figuren, speaker_examples=None, interact
 
     return valid_speakers
 
-def extract_toc_entries(folder_path):
+
+def extract_toc_entries(folder_path: str) -> str:
     """
     Extrahiert den Text aller <TextLine>-Elemente innerhalb von <TextRegion type="TOC-entry">
     aus allen PAGE XML-Dateien im angegebenen Ordner.
@@ -227,8 +231,7 @@ def extract_toc_entries(folder_path):
     Rückgabe:
         str: Alle extrahierten Zeilen, durch Zeilenumbrüche getrennt, als ein einziger String.
     """
-    ns = {'pc': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15'}
-    lines_text = []
+    lines_text: list[str] = []
 
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.xml'):
