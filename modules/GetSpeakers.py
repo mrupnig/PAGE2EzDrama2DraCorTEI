@@ -4,11 +4,26 @@ import re
 import difflib
 from collections import defaultdict
 
-ns = {'pc': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15'}
-
-type_prefix = {
-    # Falls nötig, hier Typen mit Präfixen eintragen
-}
+try:
+    from modules.config import (
+        PAGE_XML_NS as ns,
+        REGION_TYPE_PREFIX as type_prefix,
+        SPEAKER_DOT_SEARCH_LIMIT,
+        SPEAKER_MAX_DOTS_PER_LINE,
+        FIGURE_MAX_WORDS,
+        SIMILARITY_THRESHOLD_HIGH,
+        SIMILARITY_THRESHOLD_LOW,
+    )
+except ImportError:
+    from config import (
+        PAGE_XML_NS as ns,
+        REGION_TYPE_PREFIX as type_prefix,
+        SPEAKER_DOT_SEARCH_LIMIT,
+        SPEAKER_MAX_DOTS_PER_LINE,
+        FIGURE_MAX_WORDS,
+        SIMILARITY_THRESHOLD_HIGH,
+        SIMILARITY_THRESHOLD_LOW,
+    )
 
 def extract_lines(filepath):
     tree = ET.parse(filepath)
@@ -64,11 +79,10 @@ def extract_sentences_with_dot_and_limit(directory):
                     continue
 
                 # Indizes aller Punkte in den ersten 13 Zeichen sammeln
-                dot_indices = [m.start() for m in re.finditer(r'\.', clean_text) if m.start() <= 13]
+                dot_indices = [m.start() for m in re.finditer(r'\.', clean_text) if m.start() <= SPEAKER_DOT_SEARCH_LIMIT]
 
                 if dot_indices:
-                    # Bis zu drei Punkte berücksichtigen
-                    for i in range(min(3, len(dot_indices))):
+                    for i in range(min(SPEAKER_MAX_DOTS_PER_LINE, len(dot_indices))):
                         end_pos = dot_indices[i]
                         sentence = clean_text[:end_pos + 1].strip()
                         extracted_sentences.add(sentence)
@@ -99,9 +113,8 @@ def extract_figuren(dramatis_personae: str):
         # Besitzformen entfernen
         line = re.sub(r"['‘’`´]s\b", "", line)
 
-        # Nur die ersten 3 Wörter behalten
         words = line.split()
-        first_words = " ".join(words[:3])
+        first_words = " ".join(words[:FIGURE_MAX_WORDS])
 
         # Split by commas
         parts = [p.strip() for p in re.split(r",|\n", first_words) if p.strip()]
@@ -158,9 +171,9 @@ def filter_valid_speakers(speaker_list, figuren, speaker_examples=None, interact
     for w in speaker_list:
         match, score = compute_similarity(w, figuren)
 
-        if score > 0.75:
+        if score > SIMILARITY_THRESHOLD_HIGH:
             status = "wahrscheinlich Figur"
-        elif score > 0.5:
+        elif score > SIMILARITY_THRESHOLD_LOW:
             status = "vielleicht Figur"
         else:
             status = "keine Figur"
@@ -199,7 +212,7 @@ def filter_valid_speakers(speaker_list, figuren, speaker_examples=None, interact
                     print("Bitte 'j' oder 'n' eingeben.")
             keep = user_input == 'j'
         else:
-            keep = score > 0.5
+            keep = score > SIMILARITY_THRESHOLD_LOW
 
         if keep:
             valid_speakers.append(w)

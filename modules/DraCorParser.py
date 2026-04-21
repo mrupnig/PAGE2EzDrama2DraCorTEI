@@ -18,6 +18,11 @@ from transliterate import translit
 import yiddish
 from bs4 import BeautifulSoup, Tag
 
+try:
+    from modules.config import TEI_NAMESPACE, TEI_SPECIAL_SYMBOLS, FEMALE_SUFFIXES
+except ImportError:
+    from config import TEI_NAMESPACE, TEI_SPECIAL_SYMBOLS, FEMALE_SUFFIXES
+
 # =================================
 # Parser engine
 # =================================
@@ -38,7 +43,7 @@ class Parser():
                  dracor_lang = 'insert_lang'):
         ## initializing a new TEI/XML bs-tree that will be populated from ezdrama text:
         self.tree_root = Tag(name='TEI')
-        self.tree_root['xmlns'] = "http://www.tei-c.org/ns/1.0"
+        self.tree_root['xmlns'] = TEI_NAMESPACE
         self.tree_root['xml:id'] = dracor_id 
         self.tree_root['xml:lang'] = dracor_lang
         
@@ -60,8 +65,7 @@ class Parser():
         self.current_lowest_div = body
         self.current_lowest_div['level'] = 0
 
-        # defining the set of EzDrama special symbols
-        self.special_symb_list = '@$^#<'
+        self.special_symb_list = TEI_SPECIAL_SYMBOLS
         self.bracketstages = bracketstages
         
     ### Auxiliary methods for building TEI metadata structure (header/standoff) stub:
@@ -443,11 +447,10 @@ class Parser():
 
         
     def __guess_gender(self, someid):
-        female_suffixes = ('a', 'e', 'ine', 'ene', 'ette', 'ett', 'elle', 'ia', 'ie', 'ea', 'traud', 'gard', 'ique', 'ise')
         lowered = someid.lower()
         if 'frau' in lowered:
             return 'FEMALE'
-        if lowered.endswith(female_suffixes):
+        if lowered.endswith(FEMALE_SUFFIXES):
             return 'FEMALE'
         return 'MALE'
 

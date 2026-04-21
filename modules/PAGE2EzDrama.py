@@ -3,19 +3,18 @@ import statistics
 import os
 from collections import defaultdict
 
-# Namespace definieren
-ns = {'pc': 'http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15'}
-
-# Mapping für Region-Typ zu Präfix
-type_prefix = {
-    "header": "#",
-    "heading": "##",
-    "credit": "@",
-    "signature-mark": "$",
-    "TOC-entry": "",
-    "paragraph": "",
-    "catch-word": "^"
-}
+try:
+    from modules.config import (
+        PAGE_XML_NS as ns,
+        REGION_TYPE_PREFIX as type_prefix,
+        LINE_GROUP_THRESHOLD_FACTOR,
+    )
+except ImportError:
+    from config import (
+        PAGE_XML_NS as ns,
+        REGION_TYPE_PREFIX as type_prefix,
+        LINE_GROUP_THRESHOLD_FACTOR,
+    )
 
 def extract_lines(filepath):
     tree = ET.parse(filepath)
@@ -88,7 +87,7 @@ def process_file(filepath, speaker_list):
     ys_sorted = sorted(set(y for y, x, t in lines_data))
     line_gaps = [ys_sorted[i+1] - ys_sorted[i] for i in range(len(ys_sorted)-1)]
     avg_gap = statistics.median(line_gaps) if line_gaps else 0
-    threshold = avg_gap * 0.5
+    threshold = avg_gap * LINE_GROUP_THRESHOLD_FACTOR
 
     line_groups = defaultdict(list)
     group_keys = []
