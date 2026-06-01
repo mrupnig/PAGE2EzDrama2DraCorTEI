@@ -125,7 +125,7 @@ def render() -> None:
                     project.save_step("step1", result_path, {
                         "speaker_selection": st.session_state.speaker_selection,
                         "dramatis_personae": st.session_state.get("dramatis_personae", []),
-                        "figuren": st.session_state.get("figuren", []),
+                        "figuren": list(st.session_state.get("figuren") or []),
                     })
                     # Metadaten aus Eingabefeldern synchronisieren
                     project.save_metadata({"title": title, "subtitle": subtitle, "author": author})
