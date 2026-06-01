@@ -18,19 +18,19 @@ if "project_dir" not in st.session_state:
 pg = st.navigation(
     {
         "": [
-            st.Page(home_render, title="Projekte", icon="🏠", default=True),
+            st.Page(home_render, title="Projekte", icon="🏠", default=True, url_path="home"),
         ],
         "Pipeline": [
-            st.Page(step1_render, title="1 · Preprocessing",     icon="1️⃣"),
-            st.Page(step2_render, title="2 · Speaker finden",     icon="2️⃣"),
-            st.Page(step3_render, title="3 · Klammern",           icon="3️⃣"),
-            st.Page(step4_render, title="4 · Normalisierung",     icon="4️⃣"),
-            st.Page(step5_render, title="5 · Bereinigen",         icon="5️⃣"),
-            st.Page(step6_render, title="6 · TEI Export",         icon="6️⃣"),
+            st.Page(step1_render, title="1 · Preprocessing",     icon="1️⃣", url_path="step1"),
+            st.Page(step2_render, title="2 · Speaker finden",     icon="2️⃣", url_path="step2"),
+            st.Page(step3_render, title="3 · Klammern",           icon="3️⃣", url_path="step3"),
+            st.Page(step4_render, title="4 · Normalisierung",     icon="4️⃣", url_path="step4"),
+            st.Page(step5_render, title="5 · Bereinigen",         icon="5️⃣", url_path="step5"),
+            st.Page(step6_render, title="6 · TEI Export",         icon="6️⃣", url_path="step6"),
         ],
         "Projekt": [
-            st.Page(metadata_render, title="Metadaten",    icon="📋"),
-            st.Page(settings_render, title="Einstellungen", icon="⚙️"),
+            st.Page(metadata_render, title="Metadaten",    icon="📋", url_path="metadata"),
+            st.Page(settings_render, title="Einstellungen", icon="⚙️", url_path="settings"),
         ],
     }
 )
