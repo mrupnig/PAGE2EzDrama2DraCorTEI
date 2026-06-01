@@ -1,23 +1,60 @@
-from pathlib import Path
-
 import streamlit as st
 
-from steps.step1 import render as step1
-from steps.step2 import render as step2
-from steps.step3 import render as step3
-from steps.step4 import render as step4
-from steps.step5 import render as step5
-from steps.step6 import render as step6
+from pages.home import render as home_render
+from pages.metadata import render as metadata_render
+from pages.settings import render as settings_render
+from steps.step1 import render as step1_render
+from steps.step2 import render as step2_render
+from steps.step3 import render as step3_render
+from steps.step4 import render as step4_render
+from steps.step5 import render as step5_render
+from steps.step6 import render as step6_render
 
+if "project" not in st.session_state:
+    st.session_state.project = None
 if "project_dir" not in st.session_state:
     st.session_state.project_dir = None
 
-st.title("PageToDraCor")
-st.text("Mit dieser Anwendung können Dramen von PAGE zu DraCor-TEI konvertiert werden.")
+pg = st.navigation(
+    {
+        "": [
+            st.Page(home_render, title="Projekte", icon="🏠", default=True),
+        ],
+        "Pipeline": [
+            st.Page(step1_render, title="1 · Preprocessing",     icon="1️⃣"),
+            st.Page(step2_render, title="2 · Speaker finden",     icon="2️⃣"),
+            st.Page(step3_render, title="3 · Klammern",           icon="3️⃣"),
+            st.Page(step4_render, title="4 · Normalisierung",     icon="4️⃣"),
+            st.Page(step5_render, title="5 · Bereinigen",         icon="5️⃣"),
+            st.Page(step6_render, title="6 · TEI Export",         icon="6️⃣"),
+        ],
+        "Projekt": [
+            st.Page(metadata_render, title="Metadaten",    icon="📋"),
+            st.Page(settings_render, title="Einstellungen", icon="⚙️"),
+        ],
+    }
+)
 
-step1()
-step2()
-step3()
-step4()
-step5()
-step6()
+# Sidebar: project status badges
+project = st.session_state.get("project")
+if project:
+    with st.sidebar:
+        st.divider()
+        st.caption(f"📁 **{project.name}**")
+        _STATUS = {
+            "pending": "⏳", "done": "✅",
+            "stale":   "⚠️", "error": "❌", "running": "🔄",
+        }
+        _LABELS = {
+            "step1": "Preprocessing",
+            "step2": "Speaker finden",
+            "step3": "Klammern",
+            "step4": "Normalisierung",
+            "step5": "Bereinigen",
+            "step6": "TEI Export",
+        }
+        for key, label in _LABELS.items():
+            status = project.get_step(key)["status"]
+            st.caption(f"{_STATUS.get(status, '⏳')} {label}")
+
+pg.run()

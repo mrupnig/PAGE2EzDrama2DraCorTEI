@@ -5,18 +5,22 @@ from pathlib import Path
 import streamlit as st
 
 from modules.paths import get_step_paths
+from modules.project import Project
+from steps.utils import render_step_status
 
 
 def render() -> None:
     st.markdown("---")
     st.header("3️⃣ Klammer-Zeilen extrahieren")
 
-    project_dir: Path | None = st.session_state.get("project_dir")
-    if project_dir is None:
+    project: Project | None = st.session_state.get("project")
+    if project is None:
         st.warning("Kein Projekt geladen.")
         return
 
-    paths = get_step_paths(project_dir)
+    render_step_status("step3")
+
+    paths = get_step_paths(project.project_dir)
     file_in  = paths["step2"]
     file_out = paths["step3"]
 
@@ -32,7 +36,7 @@ def render() -> None:
 
         if bracket_contents:
             st.session_state.editable_bracket_contents = bracket_contents
-            st.success(f"{len(bracket_contents)} Klammer-Inhalte erfolgreich extrahiert. Jetzt bearbeitbar.")
+            st.success(f"{len(bracket_contents)} Klammer-Inhalte erfolgreich extrahiert.")
         else:
             st.info("Keine Klammer-Inhalte gefunden.")
 
@@ -62,4 +66,7 @@ def render() -> None:
 
             file_out.parent.mkdir(parents=True, exist_ok=True)
             file_out.write_text(new_text, encoding="utf-8")
+
+            project.save_step("step3", file_out, {})
+
             st.success(f"Gespeichert: {file_out}")

@@ -4,7 +4,8 @@ from pathlib import Path
 import streamlit as st
 
 from modules.paths import get_step_paths
-from steps.utils import render_file_editor
+from modules.project import Project
+from steps.utils import render_file_editor, render_step_status
 
 SECTION_ID = "sec2"
 
@@ -13,12 +14,14 @@ def render() -> None:
     st.markdown("---")
     st.header("2️⃣ Übersehene Speaker finden")
 
-    project_dir: Path | None = st.session_state.get("project_dir")
-    if project_dir is None:
+    project: Project | None = st.session_state.get("project")
+    if project is None:
         st.warning("Kein Projekt geladen.")
         return
 
-    paths = get_step_paths(project_dir)
+    render_step_status("step2")
+
+    paths = get_step_paths(project.project_dir)
     file_in  = paths["step1"]
     file_out = paths["step2"]
 
@@ -101,6 +104,9 @@ def render() -> None:
 
             file_out.parent.mkdir(parents=True, exist_ok=True)
             file_out.write_text("\n".join(processed_lines) + "\n", encoding="utf-8")
+
+            project.save_step("step2", file_out, {})
+
             st.success(f"Gespeichert: {file_out}")
             st.session_state.current_edit_path = str(file_out)
             st.session_state.editor_section    = SECTION_ID

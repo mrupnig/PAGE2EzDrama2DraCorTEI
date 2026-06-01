@@ -10,55 +10,42 @@ from modules.GetSpeakers import (
     extract_toc_entries,
 )
 from modules.PAGE2EzDrama import page2ezdrama
-from modules.paths import BASE_DIR, get_step_paths
-from steps.utils import render_file_editor
+from modules.paths import get_step_paths
+from modules.project import Project
+from steps.utils import render_file_editor, render_step_status
 
 SECTION_ID = "sec1"
 
 
-def _select_project_dir() -> None:
-    """Temporäre Projektwahl per Pfadeingabe – wird in Phase 1 durch Projektmanager ersetzt."""
-    st.write("### Projektverzeichnis")
-    default = str(BASE_DIR / "projects")
-    raw = st.text_input("Pfad zum Projektverzeichnis", value=str(st.session_state.project_dir or default))
-    if st.button("Verzeichnis setzen"):
-        p = Path(raw)
-        if not p.exists():
-            st.error(f"Verzeichnis nicht gefunden: {p}")
-        else:
-            st.session_state.project_dir = p
-            st.success(f"Projektverzeichnis gesetzt: {p}")
-            st.rerun()
-
-
 def render() -> None:
-    st.header("1️⃣ Preprocessing", anchor="preprocessing")
+    st.header("1️⃣ Preprocessing")
 
-    project_dir: Path | None = st.session_state.get("project_dir")
-    if project_dir is None:
-        _select_project_dir()
+    project: Project | None = st.session_state.get("project")
+    if project is None:
+        st.warning("Kein Projekt geladen. Bitte unter 'Projekte' ein Projekt öffnen.")
         return
 
-    paths = get_step_paths(project_dir)
+    render_step_status("step1")
+
+    paths = get_step_paths(project.project_dir)
     source_dir = paths["source"]
 
-    _select_project_dir()
-    st.divider()
-
-    xml_files = list(source_dir.glob("*.xml")) if source_dir.exists() else []
+    xml_files = sorted(source_dir.glob("*.xml")) if source_dir.exists() else []
     if not xml_files:
-        st.warning(f"Keine XML-Dateien in `{source_dir}` gefunden. Bitte PAGE-XML-Dateien dort ablegen.")
+        st.warning(f"Keine XML-Dateien in `{source_dir}`. Bitte PAGE-XML-Dateien dort ablegen.")
     else:
         st.info(f"{len(xml_files)} XML-Datei(en) in `{source_dir}`")
 
-    title    = st.text_input("Titel des Dramas",      value="Titel ...")
-    subtitle = st.text_input("Untertitel des Dramas",  value="Untertitel ...")
-    author   = st.text_input("Autor des Dramas",       value="Autor")
+    # Metadaten aus project.json als Standardwerte
+    m = project.metadata
+    title    = st.text_input("Titel des Dramas",      value=m.get("title") or "")
+    subtitle = st.text_input("Untertitel des Dramas",  value=m.get("subtitle") or "")
+    author   = st.text_input("Autor des Dramas",       value=m.get("author") or "")
     all_metadata = f"@title {title}\n@subtitle {subtitle}\n@author {author}\n"
 
     if st.button("Preprocessing starten"):
         if not xml_files:
-            st.error("Keine XML-Dateien gefunden. Bitte zuerst Dateien in den source/-Ordner legen.")
+            st.error("Keine XML-Dateien gefunden.")
         else:
             with st.spinner("Extrahiere und bereite Daten vor..."):
                 try:
@@ -134,6 +121,15 @@ def render() -> None:
                     )
                     for err in file_errors:
                         st.warning(f"Übersprungene Datei: {err}")
+
+                    project.save_step("step1", result_path, {
+                        "speaker_selection": st.session_state.speaker_selection,
+                        "dramatis_personae": st.session_state.get("dramatis_personae", []),
+                        "figuren": st.session_state.get("figuren", []),
+                    })
+                    # Metadaten aus Eingabefeldern synchronisieren
+                    project.save_metadata({"title": title, "subtitle": subtitle, "author": author})
+
                     st.success(f"Gespeichert: {result_path}")
                     st.session_state.current_edit_path = str(result_path)
                     st.session_state.editor_section    = SECTION_ID
@@ -141,7 +137,7 @@ def render() -> None:
                 except Exception as e:
                     st.error(f"Fehler bei der Vorverarbeitung: {e}")
             else:
-                st.warning("Bitte mindestens einen Sprecher auswählen, bevor die Datei erstellt wird.")
+                st.warning("Bitte mindestens einen Sprecher auswählen.")
 
     st.divider()
     st.subheader("Datei direkt in der App bearbeiten")

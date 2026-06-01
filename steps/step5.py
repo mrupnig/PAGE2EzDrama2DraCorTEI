@@ -3,22 +3,28 @@ from pathlib import Path
 import streamlit as st
 
 from modules.paths import get_step_paths
+from modules.project import Project
+from steps.utils import render_step_status
 
 
 def render() -> None:
     st.markdown("---")
     st.header("5️⃣ Gesamttext bereinigen")
 
-    project_dir: Path | None = st.session_state.get("project_dir")
-    if project_dir is None:
+    project: Project | None = st.session_state.get("project")
+    if project is None:
         st.warning("Kein Projekt geladen.")
         return
 
-    paths = get_step_paths(project_dir)
+    render_step_status("step5")
+
+    paths = get_step_paths(project.project_dir)
     file_in  = paths["step4"]
     file_out = paths["step5"]
 
-    keep_linebreaks = st.checkbox("Zeilenumbrüche behalten", value=False)
+    # Letzten Wert aus project.json als Default
+    saved_keep = project.get_step("step5")["state"].get("keep_linebreaks", False)
+    keep_linebreaks = st.checkbox("Zeilenumbrüche behalten", value=saved_keep)
 
     if st.button("Gesamttext bereinigen"):
         if not file_in.exists():
@@ -158,4 +164,7 @@ def render() -> None:
 
         file_out.parent.mkdir(parents=True, exist_ok=True)
         file_out.write_text("\n".join(cleaned_lines) + "\n", encoding="utf-8")
+
+        project.save_step("step5", file_out, {"keep_linebreaks": keep_linebreaks})
+
         st.success(f"Bereinigter Text gespeichert: {file_out}")

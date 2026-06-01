@@ -5,7 +5,8 @@ from pathlib import Path
 import streamlit as st
 
 from modules.paths import get_step_paths
-from steps.utils import render_file_editor
+from modules.project import Project
+from steps.utils import render_file_editor, render_step_status
 
 SECTION_ID = "sec4"
 
@@ -14,12 +15,14 @@ def render() -> None:
     st.markdown("---")
     st.header("4️⃣ Interaktive Speaker-Normalisierung")
 
-    project_dir: Path | None = st.session_state.get("project_dir")
-    if project_dir is None:
+    project: Project | None = st.session_state.get("project")
+    if project is None:
         st.warning("Kein Projekt geladen.")
         return
 
-    paths = get_step_paths(project_dir)
+    render_step_status("step4")
+
+    paths = get_step_paths(project.project_dir)
     file_in  = paths["step3"]
     file_out = paths["step4"]
 
@@ -81,6 +84,14 @@ def render() -> None:
                         st.session_state.remaining_speakers.remove(sel)
                     st.success(f"{len(selected)} Sprecher zu {group_name} hinzugefügt")
 
+        # Zwischenstand speichern (ohne als done zu markieren)
+        if st.button("Zwischenstand speichern", type="secondary"):
+            project.update_step_state("step4", {
+                "speaker_groups": dict(st.session_state.speaker_groups),
+                "remaining_speakers": list(st.session_state.remaining_speakers),
+            })
+            st.success("Zwischenstand gespeichert.")
+
         if st.button("Normalisieren und Datei speichern"):
             normalized_text = text
             for group_name, variants in st.session_state.speaker_groups.items():
@@ -89,6 +100,12 @@ def render() -> None:
                     normalized_text = re.sub(pattern, group_name, normalized_text, flags=re.MULTILINE)
             file_out.parent.mkdir(parents=True, exist_ok=True)
             file_out.write_text(normalized_text, encoding="utf-8")
+
+            project.save_step("step4", file_out, {
+                "speaker_groups": dict(st.session_state.speaker_groups),
+                "remaining_speakers": list(st.session_state.remaining_speakers),
+            })
+
             st.success(f"Gespeichert: {file_out}")
             st.session_state.current_edit_path = str(file_out)
             st.session_state.editor_section    = SECTION_ID
