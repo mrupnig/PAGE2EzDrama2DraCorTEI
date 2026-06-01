@@ -188,7 +188,7 @@ class Parser():
                         self.current_lowest_tag.append(line)
 
 
-    def process_file(self, path_to_file: str) -> None:
+    def process_file(self, path_to_file: str, output_path: str | None = None) -> None:
         try:
             with open(path_to_file, encoding='utf-8') as openfile:
                 file_lines = openfile.readlines()
@@ -197,7 +197,8 @@ class Parser():
         except OSError as e:
             raise OSError(f"Fehler beim Lesen von '{path_to_file}': {e}") from e
         self.parse_lines_to_xml(file_lines)
-        self.output_to_file(path_to_file.replace('.txt', '.xml'))
+        resolved_output = output_path or path_to_file.replace('.txt', '.xml')
+        self.output_to_file(resolved_output)
 
 
     def parse_lines_to_xml(self, ezdramalines: list[str]) -> None:

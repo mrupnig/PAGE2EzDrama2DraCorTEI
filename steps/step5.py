@@ -1,23 +1,30 @@
-import os
+from pathlib import Path
 
 import streamlit as st
 
-FILE_IN  = "output/4_normalized_speakers.txt"
-FILE_OUT = "output/5_drama_text_cleaned.txt"
+from modules.paths import get_step_paths
 
 
 def render() -> None:
     st.markdown("---")
     st.header("5️⃣ Gesamttext bereinigen")
 
+    project_dir: Path | None = st.session_state.get("project_dir")
+    if project_dir is None:
+        st.warning("Kein Projekt geladen.")
+        return
+
+    paths = get_step_paths(project_dir)
+    file_in  = paths["step4"]
+    file_out = paths["step5"]
+
     keep_linebreaks = st.checkbox("Zeilenumbrüche behalten", value=False)
 
     if st.button("Gesamttext bereinigen"):
-        if not os.path.exists(FILE_IN):
-            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 4 ausführen.")
+        if not file_in.exists():
+            st.error(f"Eingabedatei nicht gefunden: {file_in} — bitte zuerst Schritt 4 ausführen.")
             return
-        with open(FILE_IN, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        lines = file_in.read_text(encoding="utf-8").splitlines(keepends=True)
 
         def normalize_text(text: str) -> str:
             replacements = {
@@ -31,7 +38,6 @@ def render() -> None:
                 text = text.replace(old, new)
             return text
 
-        # -------- Variante A: Zeilenumbrüche behalten --------
         if keep_linebreaks:
             cleaned_lines: list[str] = []
             i = 0
@@ -62,7 +68,6 @@ def render() -> None:
                 i += 1
             cleaned_lines = [normalize_text(l) if l else "" for l in cleaned_lines]
 
-        # -------- Variante B: Merges (Silbentrennungen auflösen) --------
         else:
             cleaned_lines = []
             buffer = ""
@@ -151,8 +156,6 @@ def render() -> None:
                 cleaned_lines.append(buffer.strip())
             cleaned_lines = [normalize_text(l) for l in cleaned_lines]
 
-        with open(FILE_OUT, "w", encoding="utf-8") as f:
-            for line in cleaned_lines:
-                f.write(line + "\n")
-
-        st.success(f"Bereinigter Text gespeichert unter: {FILE_OUT}")
+        file_out.parent.mkdir(parents=True, exist_ok=True)
+        file_out.write_text("\n".join(cleaned_lines) + "\n", encoding="utf-8")
+        st.success(f"Bereinigter Text gespeichert: {file_out}")

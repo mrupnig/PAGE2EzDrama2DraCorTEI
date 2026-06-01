@@ -1,27 +1,33 @@
-import os
 import re
 from collections.abc import Iterator
+from pathlib import Path
 
 import streamlit as st
 
-FILE_IN  = "output/2_drama_speaker_fixed.txt"
-FILE_OUT = "output/3_drama_brackets_fixed.txt"
+from modules.paths import get_step_paths
 
 
 def render() -> None:
     st.markdown("---")
     st.header("3️⃣ Klammer-Zeilen extrahieren")
 
+    project_dir: Path | None = st.session_state.get("project_dir")
+    if project_dir is None:
+        st.warning("Kein Projekt geladen.")
+        return
+
+    paths = get_step_paths(project_dir)
+    file_in  = paths["step2"]
+    file_out = paths["step3"]
+
     if "editable_bracket_contents" not in st.session_state:
         st.session_state.editable_bracket_contents = []
 
     if st.button("Klammer-Inhalte extrahieren"):
-        if not os.path.exists(FILE_IN):
-            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 2 ausführen.")
+        if not file_in.exists():
+            st.error(f"Eingabedatei nicht gefunden: {file_in} — bitte zuerst Schritt 2 ausführen.")
             return
-        with open(FILE_IN, "r", encoding="utf-8") as f:
-            text = f.read()
-
+        text = file_in.read_text(encoding="utf-8")
         bracket_contents = re.findall(r"(?s)(\(.*?\))", text)
 
         if bracket_contents:
@@ -38,11 +44,10 @@ def render() -> None:
             updated_contents.append(edited)
 
         if st.button("Änderungen übernehmen und speichern"):
-            if not os.path.exists(FILE_IN):
-                st.error(f"Eingabedatei nicht gefunden: {FILE_IN}")
+            if not file_in.exists():
+                st.error(f"Eingabedatei nicht gefunden: {file_in}")
                 return
-            with open(FILE_IN, "r", encoding="utf-8") as f:
-                text = f.read()
+            text = file_in.read_text(encoding="utf-8")
 
             def replacement_generator() -> Iterator[str]:
                 for new_content in updated_contents:
@@ -55,7 +60,6 @@ def render() -> None:
 
             new_text = re.sub(r"(?s)(\(.*?\))", replace_match, text, count=len(updated_contents))
 
-            with open(FILE_OUT, "w", encoding="utf-8") as f:
-                f.write(new_text)
-
-            st.success(f"Alle Änderungen wurden übernommen und gespeichert unter: {FILE_OUT}")
+            file_out.parent.mkdir(parents=True, exist_ok=True)
+            file_out.write_text(new_text, encoding="utf-8")
+            st.success(f"Gespeichert: {file_out}")

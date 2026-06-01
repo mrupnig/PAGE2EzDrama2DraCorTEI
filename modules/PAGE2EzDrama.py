@@ -1,7 +1,7 @@
-import xml.etree.ElementTree as ET
 import statistics
-import os
+import xml.etree.ElementTree as ET
 from collections import defaultdict
+from pathlib import Path
 
 try:
     from modules.config import (
@@ -130,29 +130,26 @@ def process_file(filepath: str, speaker_list: list[str]) -> list[str]:
 
 def page2ezdrama(
     data_dir: str,
-    output_dir: str,
-    output_filename: str,
+    output_path: Path,
     all_metadata: str,
     speaker_list: list[str],
-) -> tuple[str, list[str]]:
-    """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert in output_dir/output_filename.
+) -> tuple[Path, list[str]]:
+    """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert unter output_path.
 
-    Gibt (output_pfad, fehlerliste) zurück. Fehlerliste enthält Warnungen für übersprungene Dateien.
+    Gibt (output_path, fehlerliste) zurück. Fehlerliste enthält Warnungen für übersprungene Dateien.
     Wirft RuntimeError wenn keine einzige Datei verarbeitet werden konnte.
     """
-    os.makedirs(output_dir, exist_ok=True)
-    gesamttext_path = os.path.join(output_dir, output_filename)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     gesamt_output: list[str] = []
     file_errors: list[str] = []
 
-    for filename in sorted(os.listdir(data_dir)):
-        if filename.endswith(".xml"):
-            filepath = os.path.join(data_dir, filename)
+    for filename in sorted(Path(data_dir).iterdir()):
+        if filename.suffix == ".xml":
             try:
-                gesamt_output.extend(process_file(filepath, speaker_list))
+                gesamt_output.extend(process_file(str(filename), speaker_list))
             except (ValueError, OSError) as e:
-                file_errors.append(f"{filename}: {e}")
+                file_errors.append(f"{filename.name}: {e}")
 
     if not gesamt_output:
         detail = "\n".join(file_errors) if file_errors else "Keine XML-Dateien gefunden."
@@ -160,12 +157,12 @@ def page2ezdrama(
             f"Keine Zeilen extrahiert. Prüfe ob die Dateien gültiges PAGE-XML enthalten.\n{detail}"
         )
 
-    with open(gesamttext_path, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(f"{all_metadata.strip()}\n\n")
         for line in gesamt_output:
             f.write(line + "\n")
 
-    return gesamttext_path, file_errors
+    return output_path, file_errors
 
 
 # Optional zum Testen direkt:

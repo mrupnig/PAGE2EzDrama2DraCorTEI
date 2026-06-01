@@ -1,12 +1,11 @@
-import os
 import re
+from pathlib import Path
 
 import streamlit as st
 
+from modules.paths import get_step_paths
 from steps.utils import render_file_editor
 
-FILE_IN  = "output/1_drama_preprocessed.txt"
-FILE_OUT = "output/2_drama_speaker_fixed.txt"
 SECTION_ID = "sec2"
 
 
@@ -14,15 +13,23 @@ def render() -> None:
     st.markdown("---")
     st.header("2️⃣ Übersehene Speaker finden")
 
+    project_dir: Path | None = st.session_state.get("project_dir")
+    if project_dir is None:
+        st.warning("Kein Projekt geladen.")
+        return
+
+    paths = get_step_paths(project_dir)
+    file_in  = paths["step1"]
+    file_out = paths["step2"]
+
     if "speaker_line_selection" not in st.session_state:
         st.session_state.speaker_line_selection = {}
 
     if st.button("Übersehene Speaker suchen"):
-        if not os.path.exists(FILE_IN):
-            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 1 ausführen.")
+        if not file_in.exists():
+            st.error(f"Eingabedatei nicht gefunden: {file_in} — bitte zuerst Schritt 1 ausführen.")
             return
-        with open(FILE_IN, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        lines = file_in.read_text(encoding="utf-8").splitlines(keepends=True)
 
         speaker_pattern = re.compile(r"^@(.*)\.$")
         speakers: set[str] = set()
@@ -59,11 +66,10 @@ def render() -> None:
             submitted = st.form_submit_button("Ausgewählte Zeilen umschreiben und speichern")
 
         if submitted:
-            if not os.path.exists(FILE_IN):
-                st.error(f"Eingabedatei nicht gefunden: {FILE_IN}")
+            if not file_in.exists():
+                st.error(f"Eingabedatei nicht gefunden: {file_in}")
                 return
-            with open(FILE_IN, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            lines = file_in.read_text(encoding="utf-8").splitlines(keepends=True)
 
             speaker_pattern = re.compile(r"^@(.*)\.$")
             speakers = set()
@@ -93,12 +99,10 @@ def render() -> None:
                     processed_lines.append(line)
                 i += 1
 
-            with open(FILE_OUT, "w", encoding="utf-8") as f:
-                for pline in processed_lines:
-                    f.write(pline + "\n")
-
-            st.success(f"Ausgewählte Zeilen wurden umgeschrieben und gespeichert unter: {FILE_OUT}")
-            st.session_state.current_edit_path = FILE_OUT
+            file_out.parent.mkdir(parents=True, exist_ok=True)
+            file_out.write_text("\n".join(processed_lines) + "\n", encoding="utf-8")
+            st.success(f"Gespeichert: {file_out}")
+            st.session_state.current_edit_path = str(file_out)
             st.session_state.editor_section    = SECTION_ID
             st.rerun()
 

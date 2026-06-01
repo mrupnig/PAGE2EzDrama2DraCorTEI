@@ -1,13 +1,12 @@
-import os
 import re
 from collections import defaultdict
+from pathlib import Path
 
 import streamlit as st
 
+from modules.paths import get_step_paths
 from steps.utils import render_file_editor
 
-FILE_IN    = "output/3_drama_brackets_fixed.txt"
-FILE_OUT   = "output/4_normalized_speakers.txt"
 SECTION_ID = "sec4"
 
 
@@ -15,19 +14,27 @@ def render() -> None:
     st.markdown("---")
     st.header("4️⃣ Interaktive Speaker-Normalisierung")
 
+    project_dir: Path | None = st.session_state.get("project_dir")
+    if project_dir is None:
+        st.warning("Kein Projekt geladen.")
+        return
+
+    paths = get_step_paths(project_dir)
+    file_in  = paths["step3"]
+    file_out = paths["step4"]
+
     if st.button("Textdatei laden"):
-        if not os.path.exists(FILE_IN):
-            st.error(f"Eingabedatei nicht gefunden: {FILE_IN} — bitte zuerst Schritt 3 ausführen.")
+        if not file_in.exists():
+            st.error(f"Eingabedatei nicht gefunden: {file_in} — bitte zuerst Schritt 3 ausführen.")
             return
-        with open(FILE_IN, "r", encoding="utf-8") as f:
-            text = f.read()
+        text = file_in.read_text(encoding="utf-8")
         st.session_state.text_loaded  = True
         st.session_state.text_content = text
         st.success("Datei erfolgreich geladen.")
 
     if st.session_state.get("text_loaded", False):
         text = st.session_state.text_content
-        speakers_raw   = re.findall(r"^@(.*?)$", text, re.MULTILINE)
+        speakers_raw    = re.findall(r"^@(.*?)$", text, re.MULTILINE)
         unique_speakers = sorted(set(speakers_raw))
 
         st.subheader("Gefundene Sprecher")
@@ -43,7 +50,6 @@ def render() -> None:
             if raw_group_name:
                 formatted = f"@{raw_group_name.strip()}."
                 if formatted not in st.session_state.speaker_groups:
-                    # Neu angelegte Speaker an den Anfang setzen
                     st.session_state.speaker_groups = defaultdict(
                         list, {formatted: []} | st.session_state.speaker_groups
                     )
@@ -81,10 +87,10 @@ def render() -> None:
                 for variant in variants:
                     pattern = r"^@" + re.escape(variant) + r"$"
                     normalized_text = re.sub(pattern, group_name, normalized_text, flags=re.MULTILINE)
-            with open(FILE_OUT, "w", encoding="utf-8") as f_out:
-                f_out.write(normalized_text)
-            st.success(f"Datei normalisiert und gespeichert nach {FILE_OUT}")
-            st.session_state.current_edit_path = FILE_OUT
+            file_out.parent.mkdir(parents=True, exist_ok=True)
+            file_out.write_text(normalized_text, encoding="utf-8")
+            st.success(f"Gespeichert: {file_out}")
+            st.session_state.current_edit_path = str(file_out)
             st.session_state.editor_section    = SECTION_ID
             st.rerun()
 

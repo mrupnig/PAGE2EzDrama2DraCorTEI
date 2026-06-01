@@ -1,6 +1,4 @@
-import io
 import re
-import zipfile
 from pathlib import Path
 
 import streamlit as st
@@ -12,58 +10,59 @@ from modules.GetSpeakers import (
     extract_toc_entries,
 )
 from modules.PAGE2EzDrama import page2ezdrama
+from modules.paths import BASE_DIR, get_step_paths
 from steps.utils import render_file_editor
 
 SECTION_ID = "sec1"
 
 
+def _select_project_dir() -> None:
+    """Temporäre Projektwahl per Pfadeingabe – wird in Phase 1 durch Projektmanager ersetzt."""
+    st.write("### Projektverzeichnis")
+    default = str(BASE_DIR / "projects")
+    raw = st.text_input("Pfad zum Projektverzeichnis", value=str(st.session_state.project_dir or default))
+    if st.button("Verzeichnis setzen"):
+        p = Path(raw)
+        if not p.exists():
+            st.error(f"Verzeichnis nicht gefunden: {p}")
+        else:
+            st.session_state.project_dir = p
+            st.success(f"Projektverzeichnis gesetzt: {p}")
+            st.rerun()
+
+
 def render() -> None:
     st.header("1️⃣ Preprocessing", anchor="preprocessing")
-    st.write("### Datenordner auswählen")
 
-    session_dir: Path = st.session_state.session_dir
-    mode = st.radio("Upload-Modus", ["ZIP-Ordner", "Einzelne XMLs"])
+    project_dir: Path | None = st.session_state.get("project_dir")
+    if project_dir is None:
+        _select_project_dir()
+        return
 
-    if mode == "ZIP-Ordner":
-        z = st.file_uploader("ZIP mit deinem Ordner wählen", type=["zip"])
-        if z and st.button("Ordner importieren"):
-            with zipfile.ZipFile(io.BytesIO(z.read())) as zf:
-                for name in zf.namelist():
-                    if name.lower().endswith(".xml") and not name.endswith("/"):
-                        target = session_dir / Path(name).name  # flach ablegen
-                        with zf.open(name) as src, open(target, "wb") as dst:
-                            dst.write(src.read())
-            xmls = list(session_dir.glob("*.xml"))
-            if xmls:
-                st.session_state.data_dir = str(session_dir)
-                st.success(f"{len(xmls)} XML-Datei(en) importiert.")
-            else:
-                st.error("Keine XML-Dateien im ZIP gefunden.")
+    paths = get_step_paths(project_dir)
+    source_dir = paths["source"]
+
+    _select_project_dir()
+    st.divider()
+
+    xml_files = list(source_dir.glob("*.xml")) if source_dir.exists() else []
+    if not xml_files:
+        st.warning(f"Keine XML-Dateien in `{source_dir}` gefunden. Bitte PAGE-XML-Dateien dort ablegen.")
     else:
-        files = st.file_uploader("XML-Dateien wählen", type=["xml"], accept_multiple_files=True)
-        if files and st.button("Dateien importieren"):
-            for uf in files:
-                (session_dir / uf.name).write_bytes(uf.read())
-            st.session_state.data_dir = str(session_dir)
-            st.success(f"{len(list(session_dir.glob('*.xml')))} XML-Datei(en) importiert.")
+        st.info(f"{len(xml_files)} XML-Datei(en) in `{source_dir}`")
 
-    if st.session_state.data_dir:
-        st.info(f"Datenpfad: {st.session_state.data_dir}")
-    else:
-        st.warning("Noch kein Datenpfad gesetzt. Bitte Dateien importieren.")
-
-    title    = st.text_input("Titel des Dramas",     value="Titel ...")
-    subtitle = st.text_input("Untertitel des Dramas", value="Untertitel ...")
-    author   = st.text_input("Autor des Dramas",      value="Autor")
+    title    = st.text_input("Titel des Dramas",      value="Titel ...")
+    subtitle = st.text_input("Untertitel des Dramas",  value="Untertitel ...")
+    author   = st.text_input("Autor des Dramas",       value="Autor")
     all_metadata = f"@title {title}\n@subtitle {subtitle}\n@author {author}\n"
 
     if st.button("Preprocessing starten"):
-        if not st.session_state.data_dir:
-            st.error("Kein Datenpfad gesetzt. Bitte zuerst XML-Dateien importieren.")
+        if not xml_files:
+            st.error("Keine XML-Dateien gefunden. Bitte zuerst Dateien in den source/-Ordner legen.")
         else:
             with st.spinner("Extrahiere und bereite Daten vor..."):
                 try:
-                    data_dir = st.session_state.data_dir
+                    data_dir = str(source_dir)
                     dramatis_personae = extract_toc_entries(data_dir)
                     speaker_list_raw, speaker_examples = extract_sentences_with_dot_and_limit(data_dir)
                     figuren = extract_figuren(dramatis_personae)
@@ -126,17 +125,17 @@ def render() -> None:
             valid_speakers = [s for s, keep in st.session_state.speaker_selection.items() if keep]
             if valid_speakers:
                 try:
-                    output_path, file_errors = page2ezdrama(
-                        data_dir=st.session_state.data_dir,
-                        output_dir="output",
-                        output_filename="1_drama_preprocessed.txt",
+                    output_path = paths["step1"]
+                    result_path, file_errors = page2ezdrama(
+                        data_dir=str(source_dir),
+                        output_path=output_path,
                         all_metadata=all_metadata,
                         speaker_list=valid_speakers,
                     )
                     for err in file_errors:
                         st.warning(f"Übersprungene Datei: {err}")
-                    st.success(f"Gesamtausgabe gespeichert unter: {output_path}")
-                    st.session_state.current_edit_path = output_path
+                    st.success(f"Gespeichert: {result_path}")
+                    st.session_state.current_edit_path = str(result_path)
                     st.session_state.editor_section    = SECTION_ID
                     st.rerun()
                 except Exception as e:
