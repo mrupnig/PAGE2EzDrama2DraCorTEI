@@ -21,12 +21,12 @@ pg = st.navigation(
             st.Page(home_render, title="Projekte", icon="🏠", default=True, url_path="home"),
         ],
         "Pipeline": [
-            st.Page(step1_render, title="1 · Preprocessing",     icon="1️⃣", url_path="step1"),
-            st.Page(step2_render, title="2 · Speaker finden",     icon="2️⃣", url_path="step2"),
-            st.Page(step3_render, title="3 · Klammern",           icon="3️⃣", url_path="step3"),
-            st.Page(step4_render, title="4 · Normalisierung",     icon="4️⃣", url_path="step4"),
-            st.Page(step5_render, title="5 · Bereinigen",         icon="5️⃣", url_path="step5"),
-            st.Page(step6_render, title="6 · TEI Export",         icon="6️⃣", url_path="step6"),
+            st.Page(step1_render, title="Preprocessing",     icon="1️⃣", url_path="step1"),
+            st.Page(step2_render, title="Speaker finden",     icon="2️⃣", url_path="step2"),
+            st.Page(step3_render, title="Klammern",           icon="3️⃣", url_path="step3"),
+            st.Page(step4_render, title="Normalisierung",     icon="4️⃣", url_path="step4"),
+            st.Page(step5_render, title="Bereinigen",         icon="5️⃣", url_path="step5"),
+            st.Page(step6_render, title="TEI Export",         icon="6️⃣", url_path="step6"),
         ],
         "Projekt": [
             st.Page(metadata_render, title="Metadaten",    icon="📋", url_path="metadata"),
