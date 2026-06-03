@@ -1,3 +1,4 @@
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -60,6 +61,7 @@ def render() -> None:
 
     for p in projects:
         is_active = project and project.slug == p.slug
+        confirm_key = f"confirm_delete_{p.slug}"
         with st.container(border=True):
             col1, col2 = st.columns([5, 1])
             with col1:
@@ -75,6 +77,27 @@ def render() -> None:
                         st.session_state["project"] = p
                         st.session_state["project_dir"] = p.project_dir
                         _restore_step_states(p)
+                        st.rerun()
+                if st.button("Löschen", key=f"delete_{p.slug}", type="secondary"):
+                    st.session_state[confirm_key] = True
+                    st.rerun()
+
+            if st.session_state.get(confirm_key):
+                st.warning(
+                    f"Projekt **{p.name}** und alle Dateien unwiderruflich löschen?"
+                )
+                c1, c2, _ = st.columns([1, 1, 3])
+                with c1:
+                    if st.button("Ja, löschen", key=f"del_yes_{p.slug}", type="primary"):
+                        if is_active:
+                            for k in ("project", "project_dir"):
+                                st.session_state.pop(k, None)
+                        shutil.rmtree(p.project_dir)
+                        st.session_state.pop(confirm_key, None)
+                        st.rerun()
+                with c2:
+                    if st.button("Abbrechen", key=f"del_no_{p.slug}"):
+                        st.session_state.pop(confirm_key, None)
                         st.rerun()
 
 
