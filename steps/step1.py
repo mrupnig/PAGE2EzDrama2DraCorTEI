@@ -28,7 +28,10 @@ def render() -> None:
     render_step_status("step1")
 
     paths = get_step_paths(project.project_dir)
-    source_dir = paths["source"]
+    if project.settings.get("input_type") == "images":
+        source_dir = paths["source_page"]
+    else:
+        source_dir = paths["source"]
 
     xml_files = sorted(source_dir.glob("*.xml")) if source_dir.exists() else []
     if not xml_files:

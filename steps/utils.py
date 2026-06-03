@@ -25,6 +25,7 @@ def render_step_status(step_key: str) -> None:
         "done":    ("✅", "Abgeschlossen"),
         "stale":   ("⚠️", "Veraltet — Vorschritt wurde neu ausgeführt"),
         "error":   ("❌", "Fehler"),
+        "skipped": ("⏭️", "Übersprungen"),
     }
     icon, label = _LABELS.get(status, ("⏳", status))
     completed = f" · {step['completed_at']}" if step.get("completed_at") else ""

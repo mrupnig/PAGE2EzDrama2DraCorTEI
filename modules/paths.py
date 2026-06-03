@@ -7,7 +7,10 @@ BASE_DIR = Path(os.environ.get("PAGETODRACOR_HOME", Path.home() / "pagetodracor"
 def get_step_paths(project_dir: Path) -> dict[str, Path]:
     work = project_dir / "work" / "current"
     return {
-        "source": project_dir / "source",
+        "source":        project_dir / "source",
+        "source_images": project_dir / "source" / "images",
+        "source_page":   project_dir / "source" / "page",
+        "step0":  work / "step0_ocr.json",
         "step1":  work / "step1_ezdrama.txt",
         "step2":  work / "step2_speakers_fixed.txt",
         "step3":  work / "step3_brackets_fixed.txt",

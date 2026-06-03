@@ -7,6 +7,11 @@ import streamlit as st
 from modules.paths import BASE_DIR
 from modules.project import Project, slugify
 
+_STEP_ICONS = {
+    "pending": "⏳", "done": "✅", "stale": "⚠️",
+    "error": "❌", "running": "🔄", "skipped": "⏭️",
+}
+
 
 def render() -> None:
     st.title("PageToDraCor")
@@ -38,16 +43,34 @@ def render() -> None:
                                         value=True,
                                         help="bracketstages-Modus im TEI-Parser.")
 
+        input_type = st.radio(
+            "Eingabemodus",
+            options=["page_xml", "images"],
+            format_func=lambda x: (
+                "PAGE-XML (bestehend)" if x == "page_xml"
+                else "Bilder / Scans (OCR in der App)"
+            ),
+            help=(
+                "PAGE-XML: Dateien aus OCR4all oder anderer OCR-Software direkt verwenden. "
+                "Bilder: Scans werden über die eingebaute OCR-Pipeline (Kraken + Calamari) verarbeitet."
+            ),
+            horizontal=True,
+        )
+
         if st.button("Projekt anlegen", disabled=not name):
             try:
-                new_project = Project.create(name, is_prose, bracketstages)
+                new_project = Project.create(name, is_prose, bracketstages, input_type=input_type)
                 st.session_state["project"] = new_project
                 st.session_state["project_dir"] = new_project.project_dir
-                source_path = new_project.project_dir / "source"
-                st.success(
-                    f"Projekt **{name}** angelegt. "
-                    f"Bitte PAGE-XML-Dateien in `{source_path}` ablegen."
-                )
+
+                if input_type == "images":
+                    source_path = new_project.project_dir / "source" / "images"
+                    hint = f"Bitte Bilddateien (jpg/png/tif) in `{source_path}` ablegen, dann OCR-Pipeline starten."
+                else:
+                    source_path = new_project.project_dir / "source"
+                    hint = f"Bitte PAGE-XML-Dateien in `{source_path}` ablegen."
+
+                st.success(f"Projekt **{name}** angelegt. {hint}")
                 st.rerun()
             except ValueError as e:
                 st.error(str(e))
@@ -69,7 +92,15 @@ def render() -> None:
                 if is_active:
                     label += " ✓"
                 st.write(label)
-                st.caption(f"`{p.slug}` · geändert: {p.modified}")
+                input_badge = (
+                    "🖼️ Bilder/OCR" if p.settings.get("input_type") == "images"
+                    else "📄 PAGE-XML"
+                )
+                llm_badge = (
+                    "🤖 KI-unterstützt" if p.settings.get("llm_mode") == "assisted"
+                    else "✋ Manuell"
+                )
+                st.caption(f"`{p.slug}` · {input_badge} · {llm_badge} · geändert: {p.modified}")
                 _render_step_summary(p)
             with col2:
                 if not is_active:
@@ -102,10 +133,25 @@ def render() -> None:
 
 
 def _render_step_summary(project: Project) -> None:
-    icons = {"pending": "⏳", "done": "✅", "stale": "⚠️", "error": "❌", "running": "🔄"}
-    labels = ["Preprocessing", "Speaker", "Klammern", "Normalisierung", "Bereinigen", "TEI"]
-    keys   = ["step1", "step2", "step3", "step4", "step5", "step6"]
-    parts  = [f"{icons.get(project.get_step(k)['status'], '⏳')} {l}" for k, l in zip(keys, labels)]
+    input_type = project.settings.get("input_type", "page_xml")
+
+    all_steps = [
+        ("step0", "OCR"),
+        ("step1", "Preprocessing"),
+        ("step2", "Speaker"),
+        ("step3", "Klammern"),
+        ("step4", "Normalisierung"),
+        ("step5", "Bereinigen"),
+        ("step6", "TEI"),
+    ]
+
+    parts = []
+    for key, label in all_steps:
+        if key == "step0" and input_type != "images":
+            continue
+        status = project.get_step(key)["status"]
+        parts.append(f"{_STEP_ICONS.get(status, '⏳')} {label}")
+
     st.caption("  ·  ".join(parts))
 
 
