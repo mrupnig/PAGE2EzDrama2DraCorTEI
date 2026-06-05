@@ -16,4 +16,6 @@ dependencies = [
     "yiddish>=0.0.23",
     "openai>=1.0",
     "rapidfuzz>=3.0",
+    "kraken>=7.0.2",
+    "calamari-ocr>=1.0.7",
 ]

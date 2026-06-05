@@ -22,7 +22,7 @@ project = st.session_state.get("project")
 pipeline_pages = []
 if project and project.settings.get("input_type") == "images":
     pipeline_pages.append(
-        st.Page(step0_render, title="OCR-Pipeline", icon="0️⃣", url_path="step0")
+        st.Page(step0_render, title="Segmentierung", icon="0️⃣", url_path="step0")
     )
 pipeline_pages += [
     st.Page(step1_render, title="Preprocessing",  icon="1️⃣", url_path="step1"),
@@ -57,7 +57,7 @@ if project:
             "stale":   "⚠️", "error": "❌", "running": "🔄", "skipped": "⏭️",
         }
         _LABELS = {
-            "step0": "OCR-Pipeline",
+            "step0": "Segmentierung",
             "step1": "Preprocessing",
             "step2": "Speaker finden",
             "step3": "Klammern",

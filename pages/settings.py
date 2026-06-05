@@ -7,8 +7,6 @@ from modules.llm import (
     llm_available,
 )
 from modules.ocr import (
-    calamari_available,
-    get_calamari_version,
     get_kraken_version,
     kraken_available,
 )
@@ -24,46 +22,28 @@ def render() -> None:
     # ── 1. OCR-Tools ─────────────────────────────────────────────────────────
     st.subheader("OCR-Tools")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Kraken** (Layoutsegmentierung)")
-        if kraken_available():
-            st.success(f"Installiert — {get_kraken_version() or 'Version unbekannt'}")
-        else:
-            st.error("Nicht gefunden")
-            st.code("pip install kraken", language="bash")
-
-    with col2:
-        st.markdown("**Calamari** (Texterkennung)")
-        if calamari_available():
-            st.success(f"Installiert — {get_calamari_version() or 'Version unbekannt'}")
-        else:
-            st.error("Nicht gefunden")
-            st.code("pip install calamari-ocr", language="bash")
-
-    st.caption(
-        f"Eigene Modelle (`.mlmodel` für Kraken, Checkpoint-Ordner für Calamari) "
-        f"in `{BASE_DIR / 'models'}` ablegen."
-    )
+    if kraken_available():
+        st.success(f"Kraken installiert — {get_kraken_version() or 'Version unbekannt'}")
+    else:
+        st.error("Kraken nicht gefunden")
+        st.code("uv add kraken", language="bash")
 
     model_dir = BASE_DIR / "models"
+    st.caption(
+        f"Eigene Segmentierungsmodelle (`.mlmodel`) in `{model_dir}` ablegen. "
+        "Texterkennung (OCR) erfolgt extern mit einem beliebigen Tool (Calamari, Kraken OCR, …) "
+        "und wird als PAGE-XML mit TextEquiv-Elementen zurück nach `source/page/` gelegt."
+    )
+
     if model_dir.exists():
-        mlmodels   = list(model_dir.glob("*.mlmodel"))
-        checkpoints = [
-            d for d in model_dir.iterdir()
-            if d.is_dir() and any(d.glob("*.ckpt.json"))
-        ]
-        st.caption(
-            f"Gefundene Modelle: {len(mlmodels)} Kraken-Segmentierungsmodell(e), "
-            f"{len(checkpoints)} Calamari-Checkpoint(s)"
-        )
+        mlmodels = list(model_dir.glob("*.mlmodel"))
+        st.caption(f"Gefundene Segmentierungsmodelle: {len(mlmodels)}")
     else:
         st.caption(f"Modellverzeichnis `{model_dir}` existiert noch nicht.")
 
     st.markdown(
-        "**Vortrainierte Modelle:**\n"
-        "- Kraken: `kraken list` / `kraken get <doi>` oder [zenodo.org/communities/ocr-models](https://zenodo.org/communities/ocr-models)\n"
-        "- Calamari: [github.com/Calamari-OCR/calamari_models_experimental](https://github.com/Calamari-OCR/calamari_models_experimental)"
+        "**Vortrainierte Kraken-Segmentierungsmodelle:**\n"
+        "`kraken list` / `kraken get <doi>` oder zenodo.org/communities/ocr-models"
     )
 
     st.divider()
