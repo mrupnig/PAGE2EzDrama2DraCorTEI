@@ -104,13 +104,19 @@ def render() -> None:
                         speaker_examples: dict[str, str] = {}
                         figuren: set[str] = set()
                         progress = st.progress(0.0)
+                        page_errors: list[str] = []
                         for i, f in enumerate(xml_files):
                             result = classify_page_ai(str(f), context, model)
                             speaker_list_raw |= result.speaker_list_raw
                             speaker_examples.update(result.speaker_examples)
                             figuren |= result.figure_names
                             context = result.context
+                            if result.error:
+                                page_errors.append(f"{f.name}: {result.error}")
                             progress.progress((i + 1) / len(xml_files), text=f.name)
+
+                        for err in page_errors:
+                            st.warning(f"KI-Klassifikation fehlgeschlagen — {err} (Seite als Fließtext übernommen)")
 
                         project.update_step_state("step1", {"drama_context": context.to_dict()})
                         st.session_state.dramatis_personae = ", ".join(sorted(figuren)) or "(keine erkannt)"

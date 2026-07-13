@@ -133,7 +133,7 @@ def render() -> None:
         else:
             model_step1 = llm_settings.get("model_step1", RECOMMENDED_MODELS[0])
             model_step2 = llm_settings.get("model_step2", RECOMMENDED_MODELS[0])
-            model_step3 = llm_settings.get("model_step3", RECOMMENDED_MODELS[2])
+            model_step3 = llm_settings.get("model_step3", RECOMMENDED_MODELS[3])
             model_step4 = llm_settings.get("model_step4", RECOMMENDED_MODELS[0])
             model_step1_auto = llm_settings.get("model_step1_auto", RECOMMENDED_MODELS[4])
 

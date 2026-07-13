@@ -97,6 +97,7 @@ class AIPageResult:
     speaker_examples: dict[str, str]
     figure_names: set[str]
     context: DramaContext
+    error: str | None = None
 
 
 def classify_page_ai(filepath: str, context: DramaContext, model: str) -> AIPageResult:
@@ -109,17 +110,22 @@ def classify_page_ai(filepath: str, context: DramaContext, model: str) -> AIPage
 
     prompt = _build_prompt(raw_lines, context)
     cache_key = f"{filepath}::{model}::{prompt}"
+    error_out: dict = {}
     result = cached_call(
         messages=[{"role": "user", "content": prompt}],
         model=model,
         cache_key=cache_key,
         json_mode=True,
+        error_out=error_out,
     )
 
     if result is None:
         # Fallback: Seite komplett als unpräfigierten Fließtext übernehmen,
         # nichts geht verloren — Korrektur erfolgt manuell im Text-Editor.
-        return AIPageResult(list(raw_lines), set(), {}, set(), context)
+        return AIPageResult(
+            list(raw_lines), set(), {}, set(), context,
+            error=error_out.get("error", "Unbekannter Fehler bei der KI-Klassifikation."),
+        )
 
     labels_by_index = {item.get("i"): item for item in result.get("lines", [])}
 

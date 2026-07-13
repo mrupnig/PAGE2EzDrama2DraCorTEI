@@ -19,13 +19,18 @@ _CACHE_DIR = Path.home() / "pagetodracor" / "llm_cache"
 _TEMPLATES_DIR = Path.home() / "pagetodracor" / "prompt_templates"
 _KEY_FILE = BASE_DIR / "secrets.toml"
 
-# Empfohlene Modelle für OpenRouter (kostenlos/günstig)
+# Empfohlene Modelle für OpenRouter (kostenlos/günstig).
+# Hinweis: OpenRouter verändert sein Modellangebot laufend — insbesondere kostenlose
+# Modelle (":free") werden regelmäßig abgeschaltet oder sind bei hoher Last (429)
+# temporär nicht erreichbar. Diese Liste wurde zuletzt am 2026-07-13 gegen
+# https://openrouter.ai/api/v1/models geprüft. Bei "Modell nicht gefunden"/Rate-Limit-
+# Fehlern dort die aktuell verfügbaren Modelle nachschlagen und die Liste aktualisieren.
 RECOMMENDED_MODELS: list[str] = [
-    "meta-llama/llama-3.1-8b-instruct:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.2-3b-instruct:free",
-    "google/gemini-flash-1.5",
-    "mistralai/mistral-7b-instruct",
-    "google/gemini-2.0-flash-001",
+    "google/gemini-3.1-flash-lite",
+    "google/gemini-3.5-flash",
 ]
 
 
@@ -74,6 +79,7 @@ def cached_call(
     model: str,
     cache_key: str,
     json_mode: bool = False,
+    error_out: dict | None = None,
 ) -> dict | None:
     """Schickt Anfrage an OpenRouter oder gibt gecachte Antwort zurück.
 
@@ -81,6 +87,8 @@ def cached_call(
     verfügbar, die Antwort kein gültiges JSON ist oder ein Fehler auftritt.
     json_mode=True fordert vom Modell strikten JSON-Output an (nicht von
     jedem OpenRouter-Modell unterstützt — bei Fehlern greift der None-Fallback).
+    Wird ein `error_out`-Dict übergeben, wird bei Fehlschlag `error_out["error"]`
+    mit einer lesbaren Fehlermeldung befüllt (z. B. für Warnhinweise in der UI).
     Cache-Dateien: ~/pagetodracor/llm_cache/<sha256[:16]>.json
     """
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -95,6 +103,8 @@ def cached_call(
 
     client = get_client()
     if client is None:
+        if error_out is not None:
+            error_out["error"] = "Kein API-Key hinterlegt oder openai-Paket fehlt."
         return None
 
     try:
@@ -108,7 +118,9 @@ def cached_call(
             json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         return result
-    except Exception:
+    except Exception as e:
+        if error_out is not None:
+            error_out["error"] = str(e)
         return None
 
 

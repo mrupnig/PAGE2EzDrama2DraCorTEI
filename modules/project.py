@@ -92,11 +92,11 @@ class Project:
                     "calamari_checkpoint": None,
                 },
                 "llm": {
-                    "model_step1": "meta-llama/llama-3.1-8b-instruct:free",
-                    "model_step2": "meta-llama/llama-3.1-8b-instruct:free",
-                    "model_step3": "google/gemini-flash-1.5",
-                    "model_step4": "meta-llama/llama-3.1-8b-instruct:free",
-                    "model_step1_auto": "google/gemini-2.0-flash-001",
+                    "model_step1": "nvidia/nemotron-nano-9b-v2:free",
+                    "model_step2": "nvidia/nemotron-nano-9b-v2:free",
+                    "model_step3": "google/gemini-3.1-flash-lite",
+                    "model_step4": "nvidia/nemotron-nano-9b-v2:free",
+                    "model_step1_auto": "google/gemini-3.5-flash",
                 },
             },
             "metadata": {
