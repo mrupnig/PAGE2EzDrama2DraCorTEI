@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class DrameContext:
+class DramaContext:
     """Seitenübergreifender Zustand des Dramas während der PAGE-XML-Verarbeitung."""
 
     current_speaker: str | None = None
@@ -23,7 +23,7 @@ class DrameContext:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "DrameContext":
+    def from_dict(cls, data: dict) -> "DramaContext":
         return cls(
             current_speaker=data.get("current_speaker"),
             current_act=data.get("current_act"),
