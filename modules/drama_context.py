@@ -5,29 +5,23 @@ from dataclasses import dataclass, field
 
 @dataclass
 class DramaContext:
-    """Seitenübergreifender Zustand des Dramas während der PAGE-XML-Verarbeitung."""
+    """Seitenübergreifender Zustand des Dramas während der KI-gestützten PAGE-XML-Verarbeitung."""
 
     current_speaker: str | None = None
-    current_act: str | None = None
-    current_scene: str | None = None
-    last_paragraph_incomplete: bool = False
-    character_list: list[str] = field(default_factory=list)
+    open_stage_direction: bool = False
+    known_speakers: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
             "current_speaker": self.current_speaker,
-            "current_act": self.current_act,
-            "current_scene": self.current_scene,
-            "last_paragraph_incomplete": self.last_paragraph_incomplete,
-            "character_list": self.character_list,
+            "open_stage_direction": self.open_stage_direction,
+            "known_speakers": self.known_speakers,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "DramaContext":
         return cls(
             current_speaker=data.get("current_speaker"),
-            current_act=data.get("current_act"),
-            current_scene=data.get("current_scene"),
-            last_paragraph_incomplete=data.get("last_paragraph_incomplete", False),
-            character_list=data.get("character_list", []),
+            open_stage_direction=data.get("open_stage_direction", False),
+            known_speakers=data.get("known_speakers", []),
         )

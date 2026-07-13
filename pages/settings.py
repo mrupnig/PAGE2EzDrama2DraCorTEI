@@ -5,6 +5,7 @@ from modules.llm import (
     cache_stats,
     clear_cache,
     llm_available,
+    save_api_key,
 )
 from modules.ocr import (
     get_kraken_version,
@@ -53,7 +54,7 @@ def render() -> None:
 
     col_key, col_status = st.columns([3, 1])
     with col_key:
-        st.markdown("**API-Key** (`OPENROUTER_API_KEY` in `.streamlit/secrets.toml`)")
+        st.markdown("**API-Key** (OpenRouter)")
     with col_status:
         if llm_available():
             st.success("Vorhanden")
@@ -61,9 +62,14 @@ def render() -> None:
             st.error("Nicht gefunden")
 
     if not llm_available():
-        st.markdown(
-            "API-Key in `.streamlit/secrets.toml` eintragen:\n"
-            "```toml\nOPENROUTER_API_KEY = \"sk-or-...\"\n```"
+        new_key = st.text_input("OpenRouter API-Key", type="password", key="new_openrouter_key")
+        if st.button("Key speichern") and new_key:
+            save_api_key(new_key)
+            st.success(f"API-Key gespeichert unter `{BASE_DIR / 'secrets.toml'}`.")
+            st.rerun()
+        st.caption(
+            "Alternativ kann der Key weiterhin klassisch in `.streamlit/secrets.toml` "
+            "eingetragen werden:\n```toml\nOPENROUTER_API_KEY = \"sk-or-...\"\n```"
         )
 
     st.markdown("**Empfohlene Modelle** (kostenlos / günstig):")
@@ -116,11 +122,20 @@ def render() -> None:
                     index=_model_index(llm_settings.get("model_step4"), RECOMMENDED_MODELS),
                     key="llm_model_step4",
                 )
+            model_step1_auto = st.selectbox(
+                "Schritt 1 — KI-Preprocessing (automatisch erstellte PAGE-XML ohne Guidelines)",
+                RECOMMENDED_MODELS,
+                index=_model_index(llm_settings.get("model_step1_auto"), RECOMMENDED_MODELS),
+                key="llm_model_step1_auto",
+                help="Ganzseiten-Strukturierung (Überschriften/Sprecher/Regie/Rauschen trennen) "
+                     "ist anspruchsvoller als reine Klassifikation — ggf. ein stärkeres Modell wählen.",
+            )
         else:
             model_step1 = llm_settings.get("model_step1", RECOMMENDED_MODELS[0])
             model_step2 = llm_settings.get("model_step2", RECOMMENDED_MODELS[0])
             model_step3 = llm_settings.get("model_step3", RECOMMENDED_MODELS[2])
             model_step4 = llm_settings.get("model_step4", RECOMMENDED_MODELS[0])
+            model_step1_auto = llm_settings.get("model_step1_auto", RECOMMENDED_MODELS[4])
 
         if st.button("KI-Einstellungen speichern"):
             project.save_settings({
@@ -130,6 +145,7 @@ def render() -> None:
                     "model_step2": model_step2,
                     "model_step3": model_step3,
                     "model_step4": model_step4,
+                    "model_step1_auto": model_step1_auto,
                 },
             })
             st.success("Einstellungen gespeichert.")

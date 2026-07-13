@@ -2,6 +2,7 @@ import statistics
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
+from typing import Callable
 
 try:
     from modules.config import (
@@ -90,8 +91,12 @@ def extract_lines(filepath: str) -> list[tuple[float, int, str]]:
     return lines_data
 
 
-def process_file(filepath: str, speaker_list: list[str]) -> list[str]:
-    lines_data = extract_lines(filepath)
+def process_file(
+    filepath: str,
+    speaker_list: list[str],
+    line_extractor: Callable[[str], list[tuple[float, int, str]]] = extract_lines,
+) -> list[str]:
+    lines_data = line_extractor(filepath)
 
     ys_sorted = sorted(set(y for y, x, t in lines_data))
     line_gaps = [ys_sorted[i+1] - ys_sorted[i] for i in range(len(ys_sorted)-1)]
@@ -133,6 +138,7 @@ def page2ezdrama(
     output_path: Path,
     all_metadata: str,
     speaker_list: list[str],
+    line_extractor: Callable[[str], list[tuple[float, int, str]]] = extract_lines,
 ) -> tuple[Path, list[str]]:
     """Konvertiert PAGE-XML-Dateien aus data_dir zu ezdrama-Gesamtausgabe und speichert unter output_path.
 
@@ -147,7 +153,7 @@ def page2ezdrama(
     for filename in sorted(Path(data_dir).iterdir()):
         if filename.suffix == ".xml":
             try:
-                gesamt_output.extend(process_file(str(filename), speaker_list))
+                gesamt_output.extend(process_file(str(filename), speaker_list, line_extractor))
             except (ValueError, OSError) as e:
                 file_errors.append(f"{filename.name}: {e}")
 

@@ -86,6 +86,7 @@ class Project:
                 "bracketstages": bracketstages,
                 "input_type": input_type,
                 "llm_mode": llm_mode,
+                "preprocessing_mode": "guided",
                 "ocr": {
                     "kraken_segment_model": None,
                     "calamari_checkpoint": None,
@@ -95,6 +96,7 @@ class Project:
                     "model_step2": "meta-llama/llama-3.1-8b-instruct:free",
                     "model_step3": "google/gemini-flash-1.5",
                     "model_step4": "meta-llama/llama-3.1-8b-instruct:free",
+                    "model_step1_auto": "google/gemini-2.0-flash-001",
                 },
             },
             "metadata": {

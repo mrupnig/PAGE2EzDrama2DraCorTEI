@@ -1,20 +1,45 @@
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import streamlit as st
 
+from modules.config import PAGE_XML_NS as ns
+from modules.drama_context import DramaContext
 from modules.GetSpeakers import (
     compute_similarity,
     extract_figuren,
     extract_sentences_with_dot_and_limit,
     extract_toc_entries,
 )
+from modules.llm import RECOMMENDED_MODELS, llm_available
 from modules.PAGE2EzDrama import page2ezdrama
+from modules.PAGE2EzDramaAI import classify_page_ai, make_ai_line_extractor
 from modules.paths import get_step_paths
 from modules.project import Project
 from steps.utils import render_file_editor, render_step_status
 
 SECTION_ID = "sec1"
+
+_MODE_LABELS = {
+    "guided": "Guideline-basiert (typisierte TextRegions)",
+    "auto": "KI-gestützt (automatisch erstellte PAGE-XML ohne Guidelines)",
+}
+
+
+def _looks_unguided(xml_files: list[Path]) -> bool:
+    """True wenn keine der Dateien typisierte TextRegions enthält (z. B. reines
+    Kraken-Ergebnis ohne Guideline-Codierung) — Signal für den KI-Modus."""
+    if not xml_files:
+        return False
+    for f in xml_files:
+        try:
+            root = ET.parse(f).getroot()
+        except ET.ParseError:
+            continue
+        if any(r.attrib.get("type") for r in root.findall(".//pc:TextRegion", ns)):
+            return False
+    return True
 
 
 def render() -> None:
@@ -39,6 +64,24 @@ def render() -> None:
     else:
         st.info(f"{len(xml_files)} XML-Datei(en) in `{source_dir}`")
 
+    saved_mode = project.settings.get("preprocessing_mode", "guided")
+    unguided = _looks_unguided(xml_files)
+    if unguided:
+        st.info("Keine der Quelldateien enthält typisierte TextRegions — KI-Modus wird empfohlen.")
+    suggested_mode = "auto" if (saved_mode == "guided" and unguided) else saved_mode
+
+    mode_options = ["guided", "auto"]
+    mode = st.radio(
+        "Verarbeitungsmodus",
+        options=mode_options,
+        format_func=lambda x: _MODE_LABELS[x],
+        index=mode_options.index(suggested_mode),
+        horizontal=True,
+        key="preprocessing_mode_radio",
+    )
+    if mode != saved_mode:
+        project.save_settings({"preprocessing_mode": mode})
+
     # Metadaten aus project.json als Standardwerte
     m = project.metadata
     title    = st.text_input("Titel des Dramas",      value=m.get("title") or "")
@@ -49,6 +92,34 @@ def render() -> None:
     if st.button("Preprocessing starten"):
         if not xml_files:
             st.error("Keine XML-Dateien gefunden.")
+        elif mode == "auto":
+            if not llm_available():
+                st.error("KI-Modus benötigt einen OpenRouter API-Key (siehe Einstellungen).")
+            else:
+                model = project.settings.get("llm", {}).get("model_step1_auto", RECOMMENDED_MODELS[4])
+                with st.spinner("Analysiere Seiten mit KI..."):
+                    try:
+                        context = DramaContext()
+                        speaker_list_raw: set[str] = set()
+                        speaker_examples: dict[str, str] = {}
+                        figuren: set[str] = set()
+                        progress = st.progress(0.0)
+                        for i, f in enumerate(xml_files):
+                            result = classify_page_ai(str(f), context, model)
+                            speaker_list_raw |= result.speaker_list_raw
+                            speaker_examples.update(result.speaker_examples)
+                            figuren |= result.figure_names
+                            context = result.context
+                            progress.progress((i + 1) / len(xml_files), text=f.name)
+
+                        project.update_step_state("step1", {"drama_context": context.to_dict()})
+                        st.session_state.dramatis_personae = ", ".join(sorted(figuren)) or "(keine erkannt)"
+                        st.session_state.speaker_list_raw  = speaker_list_raw
+                        st.session_state.speaker_examples  = speaker_examples
+                        st.session_state.figuren           = figuren
+                        st.success("KI-Preprocessing abgeschlossen.")
+                    except Exception as e:
+                        st.error(f"Fehler beim KI-Preprocessing: {e}")
         else:
             with st.spinner("Extrahiere und bereite Daten vor..."):
                 try:
@@ -116,11 +187,18 @@ def render() -> None:
             if valid_speakers:
                 try:
                     output_path = paths["step1"]
+                    extractor_kwargs = {}
+                    if mode == "auto":
+                        model = project.settings.get("llm", {}).get(
+                            "model_step1_auto", RECOMMENDED_MODELS[4]
+                        )
+                        extractor_kwargs["line_extractor"] = make_ai_line_extractor(model)
                     result_path, file_errors = page2ezdrama(
                         data_dir=str(source_dir),
                         output_path=output_path,
                         all_metadata=all_metadata,
                         speaker_list=valid_speakers,
+                        **extractor_kwargs,
                     )
                     for err in file_errors:
                         st.warning(f"Übersprungene Datei: {err}")
