@@ -36,3 +36,5 @@ dev/
 tex/
 models/
 notebooks/
+clustering/
+misc.py
